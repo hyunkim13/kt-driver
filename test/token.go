@@ -4,15 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"net/http"
+	"io/ioutil"
+	"encoding/json"
 )
-
-type Server struct {
-	ID string `json:"id"`
-}
-
-type ResponseBody struct {
-	Server Server `json:"server"`
-}
 
 
 func token() (string, error) {
@@ -52,6 +46,7 @@ func createVM() {
 
 	fmt.Println(data)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
+	
 	if err != nil{
 		fmt.Errorf("Error Creating Request:", err)
 	}
@@ -60,10 +55,137 @@ func createVM() {
 		fmt.Errorf("Error Creamaking Post Request:", err)
 		return
 	}
+	client := &http.Client{}
+	response, err := client.Do(req)
 
 	defer req.Body.Close()
+
+    resBody, _ := ioutil.ReadAll(response.Body)
+	resBytes := []byte(resBody)
+	fmt.Println("resBody: ", resBody)
+	fmt.Println("resBytes: ", resBytes)
+	var jsonRes map[string]interface{}
+	_ = json.Unmarshal(resBytes, &jsonRes)
+
+	fmt.Println("jsonRes: ", jsonRes)
+	detail_map := jsonRes["server"].(map[string]interface{})
+	id := detail_map["id"].(string)
+	
+	
+	fmt.Println("id: ", id)
+
+	// uuid := response.Body.get("")
+}
+
+func getState() {
+	token, err := token()
+	url := "https://api.ucloudbiz.olleh.com" + `/d1/server/servers/d4e2deae-c3f8-446c-b949-e90a0f75b0dd`
+	method := "GET"
+	
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil{
+		fmt.Errorf("Error Request server list Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", token)
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil{
+		fmt.Errorf("Error Creamaking Post Request:", err)
+		return 
+	}
+	fmt.Println("response.Body: ", response.Body)
+	defer response.Body.Close()
+	
+	resBody, _ := ioutil.ReadAll(response.Body)
+	resBytes := []byte(resBody)
+	fmt.Println("resBody: ", resBody)
+	fmt.Println("resBytes: ", resBytes)
+	var jsonRes map[string]interface{}
+	_ = json.Unmarshal(resBytes, &jsonRes)
+
+	fmt.Println("jsonRes: ", jsonRes)
+	detail_map := jsonRes["server"].(map[string]interface{})
+	status := detail_map["status"].(string)
+
+	fmt.Println("status: ", status)
+}
+
+func getVMId(){
+
+	token, err := token()
+	url := "https://api.ucloudbiz.olleh.com" + `/d1/server/servers`
+	method := "GET"
+	
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil{
+		fmt.Errorf("Error Request server list Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", token)
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil{
+		fmt.Errorf("Error Creamaking Post Request:", err)
+		return 
+	}
+	fmt.Println("response.Body: ", response.Body)
+	defer response.Body.Close()
+
+	resBody, _ := ioutil.ReadAll(response.Body)
+	resBytes := []byte(resBody)
+	fmt.Println("resBody: ", resBody)
+	fmt.Println("resBytes: ", resBytes)
+	var jsonRes map[string]interface{}
+	_ = json.Unmarshal(resBytes, &jsonRes)
+
+	var data map[string]interface{}
+	var id string
+	
+	decoder := json.NewDecoder(strings.NewReader(string(resBytes)))
+	if err := decoder.Decode(&data); err != nil {
+		fmt.Println("Error decoding JSON:", err)
+		return
+	}
+	servers, found := data["servers"].([]interface{})
+	if !found {
+		fmt.Println("Key 'servers' not found")
+		return
+	}
+
+	
+
+	for _, server := range servers {
+		serverMap, isMap := server.(map[string]interface{})
+		if !isMap {
+			fmt.Println("Invalid server data")
+			continue
+		}
+
+		name, found := serverMap["name"].(string)
+		if !found {
+			continue
+		}
+
+		if name == "SaaSify01" {
+			id, found := serverMap["id"].(string)
+			if !found {
+				fmt.Println("ID not found for 'SaaSify01'")
+				continue
+			}
+			fmt.Println("ID for 'SaaSify01':", id)
+			break
+			fmt.Println("id:", id)
+		}
+		
+	}
+	fmt.Println("id:", id)
+
+	
 }
 
 func main(){
-	createVM()
+	// createVM()
+	// getState()
+	getVMId()
 }
