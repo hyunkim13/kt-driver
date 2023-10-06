@@ -324,7 +324,15 @@ func (d *KTDriver) GetState() (state.State, error){
 
 func (d *KTDriver) GetURL() (string, error){
 	log.Debug("GetURL function...")
-	return fmt.Sprint("success"), nil
+	fmt.Println("GetURL function...")
+	ip, err := d.GetIP()
+	if err != nil {
+		return "", err
+	}
+	if ip == "" {
+		return "", nil
+	}
+	return fmt.Sprintf("tcp://%s:%d", ip, 2376), nil
 }
 // 호스트 강제 종료
 func (d *KTDriver) Kill() error {
