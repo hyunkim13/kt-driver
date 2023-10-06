@@ -32,6 +32,7 @@ type KTDriver struct {
 	ImageId              string
 	ImageName            string
 	KeyPairName          string
+	PrivateKeyFile       string
 	UserId               string
 	UserPassword         string
 	VMId                 string
@@ -99,6 +100,12 @@ func (d *KTDriver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "",
 		},
 		mcnflag.StringFlag{
+			EnvVar: "KT_PRIVATE_KEY_FILE",
+			Name:   "kt-private-key-file",
+			Usage:  "Private keyfile to use for SSH (absolute path)",
+			Value:  "",
+		},
+		mcnflag.StringFlag{
 			EnvVar: "KT_User_Id",
 			Name:   "kt-user-id",
 			Usage:  "KT user-id",
@@ -127,14 +134,12 @@ func (d *KTDriver) GetCreateFlags() []mcnflag.Flag {
 }
 
 // KT 드라이버의 새 인스턴스를 생성하고 반환
-func NewDriver(hostname, storePath string) *KTDriver {
+func NewDriver() *KTDriver {
 	log.Debug("NewDriver function...")
 	return &KTDriver{
 		BaseDriver:   &drivers.BaseDriver{
 			SSHUser:      defaultSSHUser,
 		    SSHPort:      defaultSSHPort,
-			MachineName:  hostname,
-			StorePath:    storePath,
 		},
 		
 	}
@@ -185,6 +190,7 @@ func (d *KTDriver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.ImageId = flags.String("kt-image-id")
 	d.ImageName = flags.String("kt-image-name")
 	d.KeyPairName = flags.String("kt-ssh-keypair-name")
+	d.PrivateKeyFile = flags.String("kt-private-key-file")
 	d.UserId = flags.String("kt-user-id")
 	d.UserPassword = flags.String("kt-user-password")
 	d.SSHUser = flags.String("kt-ssh-user")
@@ -200,7 +206,11 @@ func(d *KTDriver) Create() error {
 	log.Debug("Create Machine...", "")
 
 	token, err := d.getClient()
-	
+	if d.KeyPairName != "" {
+		if err := d.loadSSHKey(); err != nil {
+			return err
+		}
+	}
 	url := d.ApiEndpoint + `d1/server/servers`
 	method := "POST"
 	data := `{"server":{"name": "", "key_name": "` + d.KeyPairName +`","flavorRef": "` 
@@ -239,6 +249,24 @@ func(d *KTDriver) Create() error {
 func(d *KTDriver) GetSSHHostname() (string, error) {
 	log.Debug("GetSSHHostname function...")
 	return d.GetIP()
+}
+
+func (d *KTDriver) loadSSHKey() error {
+	log.Debug("Loading Key Pair", d.KeyPairName)
+
+	log.Debug("Loading Private Key from", d.PrivateKeyFile)
+	privateKey, err := ioutil.ReadFile(d.PrivateKeyFile)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(d.privateSSHKeyPath(), privateKey, 0600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *KTDriver) privateSSHKeyPath() string {
+	return d.GetSSHKeyPath()
 }
 
 
@@ -381,7 +409,7 @@ func(d *KTDriver) PreCreateCheck() error {
 	if d.ImageId == "" && d.ImageName == ""{
 		return fmt.Errorf("ImageId or ImageName is nil")
 	}
-	if d.KeyPairName == "" {
+	if (d.KeyPairName != "" && d.PrivateKeyFile == "") || (d.KeyPairName == "" && d.PrivateKeyFile != ""){
 		return fmt.Errorf("KeyPairName is nil")
 	}
 	if d.UserId == "" && d.UserPassword == ""{
