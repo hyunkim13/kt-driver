@@ -2,10 +2,10 @@ package main
 
 import(
 	"github.com/docker/machine/libmachine/drivers/plugin"
-	"./driver/kt"
+	"github.com/hyunkim13/kt-driver/driver"
 )
 
 
 func main() {
-	plugin.RegisterDriver(kt.NewDriver("",""))
+	plugin.RegisterDriver(driver.NewDriver("",""))
 }
