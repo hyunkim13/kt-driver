@@ -148,9 +148,12 @@ func NewDriver() *KTDriver {
 // KT API 클라이언트를 생성(토큰발급)
 func (d *KTDriver) getClient() (string, error) {
 	log.Debug("getClient function...")
+	fmt.Println("getClient function...")
 	url := d.ApiEndpoint + "/d1/identity/auth/tokens"
 	method := "POST"
 	data := `{"auth": {"identity": {"methods":["password"],"password":{"user":{"domain": {"id": "default"},"name": "` + d.UserId + `","password":"`+ d.UserPassword+`"}}},"scope": {"project": {"domain": {"id": "default"},"name": "`+ d.UserId +`"}}}}`
+	fmt.Println("getClient url: ", url)
+	fmt.Println("getClient data: ", data)
 	req, error := http.NewRequest(method, url, strings.NewReader(data))
 	if error == nil{
 		return "", errors.New("Create Token req is nil")
@@ -211,7 +214,7 @@ func(d *KTDriver) Create() error {
 			return err
 		}
 	}
-	url := d.ApiEndpoint + `d1/server/servers`
+	url := d.ApiEndpoint + `/d1/server/servers`
 	method := "POST"
 	data := `{"server":{"name": "", "key_name": "` + d.KeyPairName +`","flavorRef": "` 
 	data += d.FlavorId + `","availability_zone":"DX-M1","networks":[{"uuid": "`
