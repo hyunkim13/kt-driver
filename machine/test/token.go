@@ -187,5 +187,6 @@ func getVMId(){
 func main(){
 	// createVM()
 	// getState()
-	getVMId()
+	// getVMId()
+	token()
 }
