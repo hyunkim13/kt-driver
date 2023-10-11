@@ -140,13 +140,16 @@ func getVMId(){
 	_ = json.Unmarshal(resBytes, &jsonRes)
 
 	var data map[string]interface{}
-	var id string
 	
 	decoder := json.NewDecoder(strings.NewReader(string(resBytes)))
+	
 	if err := decoder.Decode(&data); err != nil {
 		fmt.Println("Error decoding JSON:", err)
 		return
 	}
+
+	var id string
+
 	servers, found := data["servers"].([]interface{})
 	if !found {
 		fmt.Println("Key 'servers' not found")
@@ -167,26 +170,93 @@ func getVMId(){
 			continue
 		}
 
-		if name == "SaaSify01" {
-			id, found := serverMap["id"].(string)
+		if name == "infranics2" {
+			id, found = serverMap["id"].(string)
 			if !found {
 				fmt.Println("ID not found for 'SaaSify01'")
 				continue
 			}
 			fmt.Println("ID for 'SaaSify01':", id)
 			break
-			fmt.Println("id:", id)
+			
 		}
 		
 	}
-	fmt.Println("id:", id)
+	fmt.Println("id12312312:", id)
+}
 
+
+func GetIP() (string, error){
+
+
+	token, err := token()
+	url := "https://api.ucloudbiz.olleh.com" + `/d1/server/servers/5016bc43-97a3-48c6-9ab1-245075312df6`
+	method := "GET"
 	
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil{
+		fmt.Errorf("Error Request server list Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", token)
+	fmt.Println("getIP url: ", url)
+	client := &http.Client{}
+	response, err := client.Do(req)
+	_ = response
+	if err != nil{
+		fmt.Errorf("Error Creamaking Post Request:", err)
+	}
+	// fmt.Println("getIP response.Body: ", response.Body)
+
+
+
+	defer response.Body.Close()
+	resBody, _ := ioutil.ReadAll(response.Body)
+	resBytes := []byte(resBody)
+
+	var jsonRes map[string]interface{}
+	_ = json.Unmarshal(resBytes, &jsonRes)
+	// fmt.Println("getIP resBytes: ", resBytes)
+	detail_map := jsonRes["server"].(map[string]interface{})
+	fmt.Println("detail_map: ", detail_map)
+	addresses := detail_map["addresses"].(map[string]interface{})
+	fmt.Println("GETIP addresses: ", addresses)
+
+	dmz, ok := addresses["DMZ"].([]interface{})
+	if !ok {
+        fmt.Println("DMZ 키가 존재하지 않거나 배열이 아닙니다.")
+    }
+
+	var addr string
+	if len(dmz) > 0 {
+		firstItem, ok := dmz[0].(map[string]interface{})
+        if !ok {
+            fmt.Println("DMZ 배열의 첫 번째 요소가 맵이 아닙니다.")
+        }
+
+        addr, ok = firstItem["addr"].(string)
+        if !ok {
+            fmt.Println("addr 키가 존재하지 않거나 문자열이 아닙니다.")
+        }
+
+	} else {
+		fmt.Errorf("dmz가 없습니다")
+	}
+
+	fmt.Println("addr: ", addr)
+
+
+	// ip := dmz["addr"].(string)
+	// fmt.Println("ip: ", ip)
+
+
+	return "", fmt.Errorf("No IP found for the machine")
+
 }
 
 func main(){
 	// createVM()
 	// getState()
 	// getVMId()
-	token()
+	// token()
+	GetIP()
 }

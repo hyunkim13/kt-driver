@@ -38,7 +38,9 @@ type KTDriver struct {
 	VMId                 string
 	SSHUser              string
 	SSHPort              int
+	Token                string
 }
+
 
 // NodeTemplate에 보이는 화면, VM 설정할 수 잇는 Flag
 func (d *KTDriver) GetCreateFlags() []mcnflag.Flag {
@@ -136,7 +138,6 @@ func (d *KTDriver) GetCreateFlags() []mcnflag.Flag {
 // KT 드라이버의 새 인스턴스를 생성하고 반환
 func NewDriver() *KTDriver {
 	log.Debug("NewDriver function...")
-	fmt.Println("NewDriver function...")
 	return &KTDriver{
 		BaseDriver:   &drivers.BaseDriver{
 			SSHUser:      defaultSSHUser,
@@ -153,13 +154,13 @@ func (d *KTDriver) getClient() (string, error) {
 	url := d.ApiEndpoint + "/d1/identity/auth/tokens"
 	method := "POST"
 	data := `{"auth": {"identity": {"methods":["password"],"password":{"user":{"domain": {"id": "default"},"name": "` + d.UserId + `","password":"`+ d.UserPassword+`"}}},"scope": {"project": {"domain": {"id": "default"},"name": "`+ d.UserId +`"}}}}`
-	fmt.Println("getClient url: ", url)
-	fmt.Println("getClient data: ", data)
+	fmt.Println("getClient url: ", method, url)
+	// fmt.Println("getClient data: ", data)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil{
 		return "", errors.New("Create Token req is nil")
 	}
-	fmt.Println("getClient req: ", req)
+	// fmt.Println("getClient req: ", req)
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	response, err := client.Do(req)
@@ -173,6 +174,8 @@ func (d *KTDriver) getClient() (string, error) {
 	// Response의 특정 Key값만 추출하고 리턴
 	token := response.Header.Get("X-Subject-Token")
 	fmt.Println("X-Subject-Token: ", token)
+	fmt.Println("getClient function End...")
+	d.Token = token
 
 	return token, nil
 }
@@ -201,7 +204,7 @@ func (d *KTDriver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.UserPassword = flags.String("kt-user-password")
 	d.SSHUser = flags.String("kt-ssh-user")
 	d.SSHPort = flags.Int("kt-ssh-port")
-
+	fmt.Println("SetConfigFromFlags function End...")
 	return nil
 }
 
@@ -213,52 +216,21 @@ func(d *KTDriver) Create() error {
 	fmt.Println("Create function...")
 
 	token, err := d.getClient()
-	fmt.Println("Create token: ", token)
-	if d.KeyPairName != "" {
-		if err := d.loadSSHKey(); err != nil {
-			return err
-		}
+	if err != nil {
+		return  errors.New("Create Token req is nil")
 	}
-	url := d.ApiEndpoint + `/d1/server/servers`
-	method := "POST"
-	data := `{"server":{"name": "", "key_name": "` + d.KeyPairName +`","flavorRef": "` 
-	data += d.FlavorId + `","availability_zone":"DX-M1","networks":[{"uuid": "`
-	data += d.NetworkId + `"}],"block_device_mapping_v2":[{"destination_type": "volume","boot_index": "0","source_type": "image","volume_size": 50,"uuid": "`
-	data += d.ImageId +`"}]}}`
+	// fmt.Println("Create token: ", token)
+	hostname := d.GetMachineName()
+	id, err := d.custom_createVM(hostname, token)
+	fmt.Println("Create funcion VMid: ", id)
 
-	fmt.Println("Create data: ", token)
-	
-	req, err := http.NewRequest(method, url, strings.NewReader(data))
-	fmt.Println("Create req: ", req)
-	if err != nil{
-		fmt.Errorf("Error Creating Request:", err)
-	}
-	req.Header.Set("X-Auth-Token", token)
-	client := &http.Client{}
-	response, err := client.Do(req)
-	_ = response
-	if err == nil{
-		fmt.Errorf("Error Creamaking Post Request:", err)
-	}
-
-	defer req.Body.Close()
-	resBody, _ := ioutil.ReadAll(response.Body)
-	resBytes := []byte(resBody)
-	var jsonRes map[string]interface{}
-	_ = json.Unmarshal(resBytes, &jsonRes)
-
-	id_detail_map := jsonRes["server"].(map[string]interface{})
-	id := id_detail_map["id"].(string)
-	d.VMId = id
-	fmt.Println("Create id: ", id)
-	fmt.Println("id: ", id)
+	fmt.Println("Create funcion End...")
 
 	return nil
 }
 
 // ssh와 함께 사용할 VM 이름 반환
 func(d *KTDriver) GetSSHHostname() (string, error) {
-	log.Debug("GetSSHHostname function...")
 	fmt.Println("GetSSHHostname function...")
 	return d.GetIP()
 }
@@ -285,31 +257,37 @@ func (d *KTDriver) privateSSHKeyPath() string {
 }
 
 
-// // 호스트의 상태를 반환
+// 호스트를 생성한 후 상태 체크
 func (d *KTDriver) GetState() (state.State, error){
+	hostname := d.GetMachineName()
 	log.Debug("GetState function...")
 	fmt.Println("GetState function...")
-	token, err := d.getClient()
+	// token, err := d.getClient()
 
-	if err != nil {
-		return state.Error, err
-		}
-	url := d.ApiEndpoint + "/d1/server/servers/" + d.VMId
+	// if err != nil {
+	// 	return state.Error, err
+	// }
+	fmt.Println("GetState hostname: ", hostname)
+
+	id, err := d.getVMId(hostname)
+
+
+	url := d.ApiEndpoint + "/d1/server/servers/" + id
 	method := "GET"
-	fmt.Println("GetState url: ", url)
+	fmt.Println("GetState url: ", method, url)
 	req, err := http.NewRequest(method, url, nil)
-	fmt.Println("GetState req: " , req)
+	// fmt.Println("GetState req: " , req)
 	if err != nil{
 		fmt.Errorf("Error Request server list Request:", err)
 	}
-	req.Header.Set("X-Auth-Token", token)
+	req.Header.Set("X-Auth-Token", d.Token)
 
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil{
 		fmt.Errorf("Error Stauts GET Request:", err)
 	}
-	log.Debug("response.Body: ", response.Body)
+	// log.Debug("response.Body: ", response.Body)
 	defer response.Body.Close()
 	
 	resBody, _ := ioutil.ReadAll(response.Body)
@@ -320,7 +298,9 @@ func (d *KTDriver) GetState() (state.State, error){
 	status_detail_map := jsonRes["server"].(map[string]interface{})
 	status := status_detail_map["status"].(string)
 
-	fmt.Println("status: ", status)
+	// fmt.Println("status: ", status)
+
+	fmt.Println("GetState function End...")
 
 	switch status {
 	case "ACTIVE":
@@ -438,8 +418,10 @@ func(d *KTDriver) PreCreateCheck() error {
 	if d.ImageId == "" && d.ImageName == ""{
 		return fmt.Errorf("ImageId or ImageName is nil")
 	}
-	if (d.KeyPairName != "" && d.PrivateKeyFile == "") || (d.KeyPairName == "" && d.PrivateKeyFile != ""){
-		return fmt.Errorf("KeyPairName is nil")
+	if (d.KeyPairName == "" && d.PrivateKeyFile == ""){
+		fmt.Println("PreCreateCheck KeyPairName...", d.KeyPairName)
+		fmt.Println("PreCreateCheck PrivateKeyFile...", d.PrivateKeyFile)
+		return fmt.Errorf("KeyPairName or PrivateKeyFile is nil")
 	}
 	if d.UserId == "" && d.UserPassword == ""{
 		return fmt.Errorf("UserId or UserPassword is nil")
@@ -455,7 +437,7 @@ func(d *KTDriver) PreCreateCheck() error {
 func(d *KTDriver) getVMId(hostname string) (string, error) {
 	log.Debug("getVMId function...")
 	fmt.Println("getVMId function...")
-	token, err := d.getClient()
+	// token, err := d.getClient()
 	url := d.ApiEndpoint + "/d1/server/servers"
 	method := "GET"
 	
@@ -463,7 +445,7 @@ func(d *KTDriver) getVMId(hostname string) (string, error) {
 	if err != nil{
 		fmt.Errorf("Error Request server list Request:", err)
 	}
-	req.Header.Set("X-Auth-Token", token)
+	req.Header.Set("X-Auth-Token", d.Token)
 
 	client := &http.Client{}
 	response, err := client.Do(req)
@@ -480,11 +462,16 @@ func(d *KTDriver) getVMId(hostname string) (string, error) {
 
 	var data map[string]interface{}
 	
+	// fmt.Println("getVMId ResponseBody: ", string(resBytes))
+	fmt.Println("getVMId hostname: ", hostname)
+
+
 	decoder := json.NewDecoder(strings.NewReader(string(resBytes)))
 	if err := decoder.Decode(&data); err != nil {
 		fmt.Println("Error decoding JSON:", err)
 		return "getVMId functioon Json Decode", nil
 	}
+
 	servers, found := data["servers"].([]interface{})
 	var vmId string
 
@@ -504,7 +491,7 @@ func(d *KTDriver) getVMId(hostname string) (string, error) {
 			continue
 		}
 		if name == hostname {
-			vmId, found := serverMap["id"].(string)
+			vmId, found = serverMap["id"].(string)
 			if !found {
 				fmt.Println("Find!!")
 				continue
@@ -513,6 +500,8 @@ func(d *KTDriver) getVMId(hostname string) (string, error) {
 			fmt.Println("VM id:", vmId)
 		}
 	}
+
+	fmt.Println("VM id: ", vmId)
 	return vmId, nil
 }
 
@@ -523,3 +512,112 @@ func(d *KTDriver) getVMId(hostname string) (string, error) {
 
 
 
+func(d *KTDriver) custom_createVM(hostname string, token string) (string, error) {
+
+	fmt.Println("custom_createVM function Start...")
+	url := d.ApiEndpoint + `/d1/server/servers`
+	method := "POST"
+	data := `{"server":{"name": "`+ hostname +`", "key_name": "` + d.KeyPairName +`","flavorRef": "` 
+	data += d.FlavorId + `","availability_zone":"DX-M1","networks":[{"uuid": "`
+	data += d.NetworkId + `"}],"block_device_mapping_v2":[{"destination_type": "volume","boot_index": "0","source_type": "image","volume_size": 50,"uuid": "`
+	data += d.ImageId +`"}]}}`
+
+	fmt.Println("Create data: ", data)
+	fmt.Println("Create token: ", token)
+	
+	req, err := http.NewRequest(method, url, strings.NewReader(data))
+	fmt.Println("Create req: ", req)
+	if err != nil{
+		fmt.Errorf("Error Creating Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", token)
+	client := &http.Client{}
+	response, err := client.Do(req)
+	_ = response
+	if err == nil{
+		fmt.Errorf("Error Creamaking Post Request:", err)
+	}
+
+	defer req.Body.Close()
+	resBody, _ := ioutil.ReadAll(response.Body)
+	resBytes := []byte(resBody)
+	var jsonRes map[string]interface{}
+	_ = json.Unmarshal(resBytes, &jsonRes)
+
+	id_detail_map := jsonRes["server"].(map[string]interface{})
+	id := id_detail_map["id"].(string)
+	d.VMId = id
+	fmt.Println("Create id: ", id)
+	fmt.Println("id: ", id)
+	fmt.Println("custom_createVM function End...")
+	return id, err
+}
+
+func (d *KTDriver) GetIP() (string, error){
+	if d.IPAddress != "" {
+		return d.IPAddress, nil
+	}
+
+	log.Debug("Looking for the IP address...")
+	fmt.Println("Looking for the IP address...")
+
+	// token, err := d.getClient()
+	// vmId, err := d.getVMId(d.GetMachineName())
+
+	fmt.Println("GETIP d.vmId: ", d.VMId)
+	url := d.ApiEndpoint + `/d1/server/servers/` + d.VMId
+	method := "GET"
+		
+	req, err := http.NewRequest(method, url, strings.NewReader(""))
+	if err != nil{
+		fmt.Errorf("Error GetIP Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", d.Token)
+	fmt.Println("GetIP token: ", d.Token)
+	client := &http.Client{}
+	response, err := client.Do(req)
+	_ = response
+	if err != nil{
+		fmt.Errorf("Error Creamaking Post Request:", err)
+	}
+	
+	defer response.Body.Close()
+	resBody, _ := ioutil.ReadAll(response.Body)
+	resBytes := []byte(resBody)
+	fmt.Println("GetIP response", response)
+	var jsonRes map[string]interface{}
+	var addr string
+
+	_ = json.Unmarshal(resBytes, &jsonRes)
+	detail_map := jsonRes["server"].(map[string]interface{})
+	addresses := detail_map["addresses"].(map[string]interface{})
+	dmz, ok := addresses["DMZ"].([]interface{})
+	fmt.Println("GETIP dmz: ", dmz)
+
+
+	if !ok {
+        fmt.Println("DMZ 키가 존재하지 않거나 배열이 아닙니다.")
+    }
+	
+	if len(dmz) > 0 {
+		firstItem, ok := dmz[0].(map[string]interface{})
+        if !ok {
+            fmt.Println("DMZ 배열의 첫 번째 요소가 맵이 아닙니다.")
+        }
+
+        addr, ok = firstItem["addr"].(string)
+        if !ok {
+            fmt.Println("addr 키가 존재하지 않거나 문자열이 아닙니다.")
+        }
+
+	} else {
+		fmt.Errorf("dmz가 없습니다")
+	}
+
+	fmt.Println("addr: ", addr)
+
+
+
+	return addr, fmt.Errorf("No IP found for the machine")
+
+}
