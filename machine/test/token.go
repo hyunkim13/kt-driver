@@ -253,10 +253,47 @@ func GetIP() (string, error){
 
 }
 
+
+func remove(){
+	fmt.Println("Remove funciton...")
+	token, err := token()
+
+
+	// KT API VM 삭제
+	url := `https://api.ucloudbiz.olleh.com` + "/d1/server/servers/" + `7113a135-6a6f-4986-9f20-17d73a16d638`
+	method := "DELETE"
+	req, err := http.NewRequest(method, url, nil)
+
+	fmt.Println("Remove url: ", method, url)
+
+
+	if err != nil{
+		fmt.Errorf("Error Creating Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", token)
+	if err != nil{
+		fmt.Errorf("Error Creamaking Post Request:", err)
+		// return
+	}
+	client := &http.Client{}
+	response, err := client.Do(req)
+
+
+	defer response.Body.Close()
+
+	fmt.Println("Response code: ", response.StatusCode)
+
+	if response.StatusCode < 200 || response.StatusCode > 300 {
+		fmt.Errorf("unable to Delete VM ")
+	}
+	fmt.Println("Remove funciton End...")
+}
+
 func main(){
 	// createVM()
 	// getState()
 	// getVMId()
 	// token()
-	GetIP()
+	// GetIP()
+	remove()
 }
