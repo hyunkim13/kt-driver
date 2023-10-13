@@ -7,11 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/state"
+	"github.com/rancher/machine/libmachine/ssh"
 )
 
 const (
@@ -176,7 +178,7 @@ func (d *KTDriver) getClient() (string, error) {
 
 	fmt.Println("getClient funciton End...")
 	log.Debug("getClient funciton End...")
-
+	time.Sleep(10 * time.Second)
 	return token, nil
 }
 
@@ -207,6 +209,7 @@ func (d *KTDriver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 	fmt.Println("SetConfigFromFlags funciton End...")
 	log.Debug("SetConfigFromFlags funciton End...")
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -237,13 +240,14 @@ func (d *KTDriver) Create() error {
 
 	fmt.Println("Create funciton End...")
 	log.Debug("Create funciton End...")
-
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
 // ssh와 함께 사용할 VM 이름 반환
 func (d *KTDriver) GetSSHHostname() (string, error) {
 	fmt.Println("GetSSHHostname function...")
+	time.Sleep(10 * time.Second)
 	return d.GetIP()
 }
 
@@ -334,8 +338,9 @@ func (d *KTDriver) GetState() (state.State, error) {
 
 	fmt.Println("status: ", status)
 
-	fmt.Println("GetState funciton End...")
-	log.Debug("GetState funciton End...")
+	fmt.Println("GetState function End...")
+	log.Debug("GetState function End...")
+	time.Sleep(10 * time.Second)
 
 	switch status {
 	case "ACTIVE":
@@ -370,7 +375,7 @@ func (d *KTDriver) GetURL() (string, error) {
 
 	fmt.Println("GetURL funciton End...")
 	log.Debug("GetURL funciton End...")
-
+	time.Sleep(10 * time.Second)
 	return fmt.Sprintf("tcp://%s:%d", ip, 2376), nil
 }
 
@@ -411,6 +416,7 @@ func (d *KTDriver) Kill() error {
 
 	fmt.Println("Kill funciton End...")
 	log.Debug("Kill funciton End...")
+	time.Sleep(10 * time.Second)
 	return d.Stop()
 
 }
@@ -448,7 +454,7 @@ func (d *KTDriver) Remove() error {
 	}
 	fmt.Println("Remove funciton End...")
 	log.Debug("Remove funciton End...")
-
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -459,7 +465,7 @@ func (d *KTDriver) Restart() error {
 
 	fmt.Println("Restart funciton End...")
 	log.Debug("Restart funciton End...")
-
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -470,6 +476,7 @@ func (d *KTDriver) Start() error {
 
 	fmt.Println("Start funciton End...")
 	log.Debug("Start funciton End...")
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -517,6 +524,7 @@ func (d *KTDriver) Stop() error {
 
 	fmt.Println("Stop funciton End...")
 	log.Debug("Stop funciton End...")
+	time.Sleep(10 * time.Second)
 	return err
 }
 
@@ -551,7 +559,7 @@ func (d *KTDriver) PreCreateCheck() error {
 
 	fmt.Println("PreCreateCheck funciton End...")
 	log.Debug("PreCreateCheck funciton End...")
-
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -627,6 +635,7 @@ func (d *KTDriver) getVMId(hostname string) (string, error) {
 
 	fmt.Println("getVMId funciton End...")
 	log.Debug("getVMId funciton End...")
+	time.Sleep(10 * time.Second)
 
 	return vmId, nil
 }
@@ -652,34 +661,55 @@ func (d *KTDriver) custom_createVM(hostname string, token string) (string, error
 
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 
-	fmt.Println("custom_createVM url: ", method, url)
+	// log.Debug("custom_createVM url: ", method, url)
+	// fmt.Println("custom_createVM url: ", method, url)
+	// time.Sleep(2 * time.Second)
+	// log.Debug("custom_createVM hostname: ", hostname)
+	// fmt.Println("custom_createVM hostname: ", hostname)
+	// time.Sleep(2 * time.Second)
+	// log.Debug("custom_createVM KeyPairName: ", d.KeyPairName)
+	// fmt.Println("custom_createVM KeyPairName: ", d.KeyPairName)
+	// time.Sleep(2 * time.Second)
+	// log.Debug("custom_createVM FlavorId: ", d.FlavorId)
+	// fmt.Println("custom_createVM FlavorId: ", d.FlavorId)
+	// time.Sleep(2 * time.Second)
+	// log.Debug("custom_createVM NetworkId: ", d.NetworkId)
+	// fmt.Println("custom_createVM NetworkId: ", d.NetworkId)
+	// time.Sleep(2 * time.Second)
+	// log.Debug("custom_createVM ImageId: ", d.ImageId)
+	// fmt.Println("custom_createVM ImageId: ", d.ImageId)
+	// time.Sleep(2 * time.Second)
+
 
 	// fmt.Println("Create req: ", req)
 	if err != nil {
 		fmt.Errorf("Error Creating Request:", err)
 	}
 	req.Header.Set("X-Auth-Token", token)
+	time.Sleep(10 * time.Second)
 	client := &http.Client{}
 	response, err := client.Do(req)
 	_ = response
-	if err == nil {
+	if err != nil {
 		fmt.Errorf("Error Creamaking Post Request:", err)
 	}
-
+	
+	if response.StatusCode < 200 || response.StatusCode > 300 {
+		return "", fmt.Errorf("Create VM Error, Check FlavorId or NetworkId, ImageId")
+	}
 	defer req.Body.Close()
 	resBody, _ := ioutil.ReadAll(response.Body)
 	resBytes := []byte(resBody)
 	var jsonRes map[string]interface{}
 	_ = json.Unmarshal(resBytes, &jsonRes)
-
 	id_detail_map := jsonRes["server"].(map[string]interface{})
 	id := id_detail_map["id"].(string)
 	d.VMId = id
 	fmt.Println("Create id: ", id)
-	fmt.Println("custom_createVM function End...")
 
 	fmt.Println("custom_createVM funciton End...")
 	log.Debug("custom_createVM funciton End...")
+	time.Sleep(10 * time.Second)
 
 	return id, err
 }
@@ -761,7 +791,7 @@ func (d *KTDriver) GetIP() (string, error) {
 
 	fmt.Println("GetIP funciton End...")
 	log.Debug("GetIP funciton End...")
-
+	time.Sleep(10 * time.Second)
 	return "", fmt.Errorf("No IP found for the machine")
 
 }

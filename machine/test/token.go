@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
+	"time"
 )
 
 
@@ -40,41 +41,96 @@ func token() (string, error) {
 
 func createVM() {
 	token, err := token()
+	// url := "https://api.ucloudbiz.olleh.com" + `/d1/server/servers`
+	// method := "POST"
+	// data := `{"server":{"name": "infranics3", "key_name": "SaaSifyKey","flavorRef": "7f56ce4a-5b56-4b53-be63-f4dda5216b63","availability_zone":"DX-M1","networks":[{"uuid": "a3f25a44-efaa-47d7-bdd4-b78032662d68"}],"block_device_mapping_v2":[{"destination_type": "volume","boot_index": "0","source_type": "image","volume_size": 50,"uuid": "84a10047-cbd8-4fb3-a743-85600a7b6961"}]}}`
+
+	// fmt.Println(data)
+	// req, err := http.NewRequest(method, url, strings.NewReader(data))
+	
+	// if err != nil{
+	// 	fmt.Errorf("Error Creating Request:", err)
+	// }
+	// req.Header.Set("X-Auth-Token", token)
+	// if err != nil{
+	// 	fmt.Errorf("Error Creamaking Post Request:", err)
+	// 	return
+	// }
+	// client := &http.Client{}
+	// response, err := client.Do(req)
+
+	// defer req.Body.Close()
+
+    // resBody, _ := ioutil.ReadAll(response.Body)
+	// resBytes := []byte(resBody)
+	// fmt.Println("resBody: ", resBody)
+	// fmt.Println("resBytes: ", resBytes)
+	// var jsonRes map[string]interface{}
+	// _ = json.Unmarshal(resBytes, &jsonRes)
+
+	// fmt.Println("jsonRes: ", jsonRes)
+	// detail_map := jsonRes["server"].(map[string]interface{})
+	// id := detail_map["id"].(string)
+	
+	
+	// fmt.Println("id: ", id)
+
+	// uuid := response.Body.get("")
+
+
+
+	fmt.Println("custom_createVM funciton...")
+
 	url := "https://api.ucloudbiz.olleh.com" + `/d1/server/servers`
 	method := "POST"
 	data := `{"server":{"name": "infranics3", "key_name": "SaaSifyKey","flavorRef": "7f56ce4a-5b56-4b53-be63-f4dda5216b63","availability_zone":"DX-M1","networks":[{"uuid": "a3f25a44-efaa-47d7-bdd4-b78032662d68"}],"block_device_mapping_v2":[{"destination_type": "volume","boot_index": "0","source_type": "image","volume_size": 50,"uuid": "84a10047-cbd8-4fb3-a743-85600a7b6961"}]}}`
 
-	fmt.Println(data)
+	fmt.Println("Create data: ", data)
+	fmt.Println("Create token: ", token)
+
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
-	
-	if err != nil{
+
+	fmt.Println("custom_createVM url: ", method, url)
+	time.Sleep(2 * time.Second)
+	fmt.Println("custom_createVM hostname: ")
+	time.Sleep(2 * time.Second)
+	fmt.Println("custom_createVM KeyPairName: ")
+	time.Sleep(2 * time.Second)
+	fmt.Println("custom_createVM FlavorId: ")
+	time.Sleep(2 * time.Second)
+	fmt.Println("custom_createVM NetworkId: ")
+	time.Sleep(2 * time.Second)
+	fmt.Println("custom_createVM ImageId: ")
+	time.Sleep(2 * time.Second)
+
+
+	// fmt.Println("Create req: ", req)
+	if err != nil {
 		fmt.Errorf("Error Creating Request:", err)
 	}
 	req.Header.Set("X-Auth-Token", token)
-	if err != nil{
-		fmt.Errorf("Error Creamaking Post Request:", err)
-		return
-	}
 	client := &http.Client{}
 	response, err := client.Do(req)
+	_ = response
+	if err == nil {
+		fmt.Errorf("Error Creamaking Post Request:", err)
+	}
 
 	defer req.Body.Close()
-
-    resBody, _ := ioutil.ReadAll(response.Body)
+	resBody, _ := ioutil.ReadAll(response.Body)
 	resBytes := []byte(resBody)
-	fmt.Println("resBody: ", resBody)
-	fmt.Println("resBytes: ", resBytes)
 	var jsonRes map[string]interface{}
 	_ = json.Unmarshal(resBytes, &jsonRes)
 
-	fmt.Println("jsonRes: ", jsonRes)
-	detail_map := jsonRes["server"].(map[string]interface{})
-	id := detail_map["id"].(string)
+	id_detail_map := jsonRes["server"].(map[string]interface{})
+	id := id_detail_map["id"].(string)
 	
-	
-	fmt.Println("id: ", id)
+	fmt.Println("Create id: ", id)
+	fmt.Println("custom_createVM function End...")
 
-	// uuid := response.Body.get("")
+	fmt.Println("custom_createVM funciton End...")
+
+	fmt.Println("id: ", id)
 }
 
 func getState() {
@@ -290,10 +346,10 @@ func remove(){
 }
 
 func main(){
-	// createVM()
+	createVM()
 	// getState()
 	// getVMId()
 	// token()
 	// GetIP()
-	remove()
+	// remove()
 }
