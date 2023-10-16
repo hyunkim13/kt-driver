@@ -22,7 +22,7 @@ const (
 	defaultActiveTimeout = 400
 )
 
-type KTDriver struct {
+type Driver struct {
 	*drivers.BaseDriver
 	ApiEndpoint    string
 	ActiveTimeout  int
@@ -44,7 +44,7 @@ type KTDriver struct {
 }
 
 // NodeTemplate에 보이는 화면, VM 설정할 수 잇는 Flag
-func (d *KTDriver) GetCreateFlags() []mcnflag.Flag {
+func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	fmt.Println("GetCreateFlags funciton...")
 	log.Debug("GetCreateFlags funciton...")
 	return []mcnflag.Flag{
@@ -137,9 +137,9 @@ func (d *KTDriver) GetCreateFlags() []mcnflag.Flag {
 }
 
 // KT 드라이버의 새 인스턴스를 생성하고 반환
-func NewDriver() *KTDriver {
+func NewDriver() *Driver {
 	log.Debug("NewDriver function...")
-	return &KTDriver{
+	return &Driver{
 		BaseDriver: &drivers.BaseDriver{
 			SSHUser: defaultSSHUser,
 			SSHPort: defaultSSHPort,
@@ -148,7 +148,7 @@ func NewDriver() *KTDriver {
 }
 
 // KT API 클라이언트를 생성(토큰발급)
-func (d *KTDriver) getClient() (string, error) {
+func (d *Driver) getClient() (string, error) {
 	fmt.Println("getClient funciton...")
 	log.Debug("getClient funciton...")
 	url := d.ApiEndpoint + "/d1/identity/auth/tokens"
@@ -178,18 +178,18 @@ func (d *KTDriver) getClient() (string, error) {
 
 	fmt.Println("getClient funciton End...")
 	log.Debug("getClient funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return token, nil
 }
 
 // KT 드라이버 이름을 리턴
-func (d *KTDriver) DriverName() string {
+func (d *Driver) DriverName() string {
 	log.Debug("DriverName function...")
 	return "kt"
 }
 
 // CreateFlags에서 반환된 개체로 드라이버 구성
-func (d *KTDriver) SetConfigFromFlags(flags drivers.DriverOptions) error {
+func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	fmt.Println("SetConfigFromFlags funciton...")
 	log.Debug("SetConfigFromFlags funciton...")
 	d.ApiEndpoint = flags.String("kt-api-endpoint-url")
@@ -209,12 +209,12 @@ func (d *KTDriver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 	fmt.Println("SetConfigFromFlags funciton End...")
 	log.Debug("SetConfigFromFlags funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return nil
 }
 
 // 드라이버를 구성하여 호스트를 생성
-func (d *KTDriver) Create() error {
+func (d *Driver) Create() error {
 	log.Debug("Create function...")
 	fmt.Println("Create function...")
 
@@ -240,65 +240,66 @@ func (d *KTDriver) Create() error {
 
 	fmt.Println("Create funciton End...")
 	log.Debug("Create funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return nil
 }
 
 // ssh와 함께 사용할 VM 이름 반환
-func (d *KTDriver) GetSSHHostname() (string, error) {
+func (d *Driver) GetSSHHostname() (string, error) {
 	fmt.Println("GetSSHHostname function...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return d.GetIP()
 }
 
-// func (d *KTDriver) loadSSHKey() error {
-// 	log.Debug("Loading Key Pair", d.KeyPairName)
-// 	fmt.Println("Loading Key Pair", d.KeyPairName)
+func (d *Driver) loadSSHKey() error {
+	log.Debug("Loading Key Pair", d.KeyPairName)
+	fmt.Println("Loading Key Pair", d.KeyPairName)
 
-// 	log.Debug("Loading Private Key from", d.PrivateKeyFile)
-// 	fmt.Println("Loading Private Key from", d.PrivateKeyFile)
-// 	privateKey, err := ioutil.ReadFile(d.PrivateKeyFile)
-// 	// publicKey, err := ioutil.ReadFile(d.KeyPairName)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if err := ioutil.WriteFile(d.privateSSHKeyPath(), privateKey, 0600); err != nil {
-// 		return err
-// 	}
-// 	// if err := ioutil.WriteFile(d.publicSSHKeyPath(), publicKey, 0600); err != nil {
-// 	// 	return err
-// 	// }
-// 	return nil
-// }
+	log.Debug("Loading Private Key from", d.PrivateKeyFile)
+	fmt.Println("Loading Private Key from", d.PrivateKeyFile)
+	privateKey, err := ioutil.ReadFile(d.PrivateKeyFile)
+	// publicKey, err := ioutil.ReadFile(d.KeyPairName)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(d.privateSSHKeyPath(), privateKey, 0600); err != nil {
+		return err
+	}
+	// if err := ioutil.WriteFile(d.publicSSHKeyPath(), publicKey, 0600); err != nil {
+	// 	return err
+	// }
+	return nil
+}
 
-// func (d *KTDriver) createSSHKey() error {
-// 	log.Debug("Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
-// 	if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
-// 		return err
-// 	}
-// 	publicKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if publicKey != nil {
-// 		log.Debug("publicKey is not null")
-// 	}
-// 	return nil
-// }
+func (d *Driver) createSSHKey() error {
+	log.Debug("Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
+	if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
+		return err
+	}
+	publicKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
+	if err != nil {
+		return err
+	}
+	if publicKey != nil {
+		log.Debug("publicKey is not null")
+	}
+	return nil
+}
 
-// func (d *KTDriver) privateSSHKeyPath() string {
-// 	fmt.Println("privateSSHKeyPath function...", d.PrivateKeyFile)
-// 	return d.GetSSHKeyPath()
-// }
+func (d *Driver) privateSSHKeyPath() string {
+	fmt.Println("privateSSHKeyPath function...", d.PrivateKeyFile)
+	return d.GetSSHKeyPath()
+}
 
-// func (d *KTDriver) publicSSHKeyPath() string {
-// 	return d.GetSSHKeyPath() + ".pub"
-// }
+func (d *Driver) publicSSHKeyPath() string {
+	return d.GetSSHKeyPath() + ".pub"
+}
 
 // 호스트를 생성한 후 상태 체크
-func (d *KTDriver) GetState() (state.State, error) {
+func (d *Driver) GetState() (state.State, error) {
 	fmt.Println("GetState funciton...")
 	log.Debug("GetState funciton...")
+	time.Sleep(5 * time.Second)
 	hostname := d.GetMachineName()
 
 	// token, err := d.getClient()
@@ -340,7 +341,7 @@ func (d *KTDriver) GetState() (state.State, error) {
 
 	fmt.Println("GetState function End...")
 	log.Debug("GetState function End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	switch status {
 	case "ACTIVE":
@@ -359,7 +360,7 @@ func (d *KTDriver) GetState() (state.State, error) {
 	return state.None, nil
 }
 
-func (d *KTDriver) GetURL() (string, error) {
+func (d *Driver) GetURL() (string, error) {
 	fmt.Println("GetURL funciton...")
 	log.Debug("GetURL funciton...")
 
@@ -375,12 +376,12 @@ func (d *KTDriver) GetURL() (string, error) {
 
 	fmt.Println("GetURL funciton End...")
 	log.Debug("GetURL funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return fmt.Sprintf("tcp://%s:%d", ip, 2376), nil
 }
 
 // 호스트 강제 종료
-func (d *KTDriver) Kill() error {
+func (d *Driver) Kill() error {
 	fmt.Println("Kill funciton...")
 	log.Debug("Kill funciton...")
 
@@ -416,13 +417,13 @@ func (d *KTDriver) Kill() error {
 
 	fmt.Println("Kill funciton End...")
 	log.Debug("Kill funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return d.Stop()
 
 }
 
 // // 호스트 삭제
-func (d *KTDriver) Remove() error {
+func (d *Driver) Remove() error {
 	fmt.Println("Remove funciton...")
 	log.Debug("Remove funciton...")
 	token, err := d.getClient()
@@ -454,34 +455,34 @@ func (d *KTDriver) Remove() error {
 	}
 	fmt.Println("Remove funciton End...")
 	log.Debug("Remove funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return nil
 }
 
 // // 호스트 재시작
-func (d *KTDriver) Restart() error {
+func (d *Driver) Restart() error {
 	fmt.Println("Restart funciton...")
 	log.Debug("Restart funciton...")
 
 	fmt.Println("Restart funciton End...")
 	log.Debug("Restart funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return nil
 }
 
 // // 호스트 성공
-func (d *KTDriver) Start() error {
+func (d *Driver) Start() error {
 	fmt.Println("Start funciton...")
 	log.Debug("Start funciton...")
 
 	fmt.Println("Start funciton End...")
 	log.Debug("Start funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return nil
 }
 
 // 호스트 중지
-func (d *KTDriver) Stop() error {
+func (d *Driver) Stop() error {
 	fmt.Println("Stop funciton...")
 	log.Debug("Stop funciton...")
 	hostname := d.GetMachineName()
@@ -524,12 +525,12 @@ func (d *KTDriver) Stop() error {
 
 	fmt.Println("Stop funciton End...")
 	log.Debug("Stop funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return err
 }
 
 // // 드라이버를 생성할 준비가 되었는지 확인
-func (d *KTDriver) PreCreateCheck() error {
+func (d *Driver) PreCreateCheck() error {
 	log.Debug("PreCreateCheck function...")
 	fmt.Println("PreCreateCheck function...")
 	if d.ApiEndpoint == "" {
@@ -559,11 +560,11 @@ func (d *KTDriver) PreCreateCheck() error {
 
 	fmt.Println("PreCreateCheck funciton End...")
 	log.Debug("PreCreateCheck funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return nil
 }
 
-func (d *KTDriver) getVMId(hostname string) (string, error) {
+func (d *Driver) getVMId(hostname string) (string, error) {
 	fmt.Println("getVMId funciton...")
 	log.Debug("getVMId funciton...")
 	// token, err := d.getClient()
@@ -635,7 +636,7 @@ func (d *KTDriver) getVMId(hostname string) (string, error) {
 
 	fmt.Println("getVMId funciton End...")
 	log.Debug("getVMId funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	return vmId, nil
 }
@@ -645,7 +646,7 @@ func (d *KTDriver) getVMId(hostname string) (string, error) {
 // 	return defaultSSHUser
 // }
 
-func (d *KTDriver) custom_createVM(hostname string, token string) (string, error) {
+func (d *Driver) custom_createVM(hostname string, token string) (string, error) {
 	fmt.Println("custom_createVM funciton...")
 	log.Debug("custom_createVM funciton...")
 
@@ -680,20 +681,19 @@ func (d *KTDriver) custom_createVM(hostname string, token string) (string, error
 	// fmt.Println("custom_createVM ImageId: ", d.ImageId)
 	// time.Sleep(2 * time.Second)
 
-
 	// fmt.Println("Create req: ", req)
 	if err != nil {
 		fmt.Errorf("Error Creating Request:", err)
 	}
 	req.Header.Set("X-Auth-Token", token)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	client := &http.Client{}
 	response, err := client.Do(req)
 	_ = response
 	if err != nil {
 		fmt.Errorf("Error Creamaking Post Request:", err)
 	}
-	
+
 	if response.StatusCode < 200 || response.StatusCode > 300 {
 		return "", fmt.Errorf("Create VM Error, Check FlavorId or NetworkId, ImageId")
 	}
@@ -709,12 +709,12 @@ func (d *KTDriver) custom_createVM(hostname string, token string) (string, error
 
 	fmt.Println("custom_createVM funciton End...")
 	log.Debug("custom_createVM funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	return id, err
 }
 
-func (d *KTDriver) GetIP() (string, error) {
+func (d *Driver) GetIP() (string, error) {
 	fmt.Println("GetIP funciton...")
 	log.Debug("GetIP funciton...")
 
@@ -791,7 +791,7 @@ func (d *KTDriver) GetIP() (string, error) {
 
 	fmt.Println("GetIP funciton End...")
 	log.Debug("GetIP funciton End...")
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	return "", fmt.Errorf("No IP found for the machine")
 
 }

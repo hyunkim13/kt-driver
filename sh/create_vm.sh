@@ -1,0 +1,3 @@
+token=gAAAAABlLJz62EK3K6jP5k_8t34dH_VUxNwQkSMMlNctmTqyZVH88osw0Jag7q542Vo2NyTAn4fkQfylXrdQSiTihTOxnpSIuZ1FQh1HxrMLkTQ1YWZRomSRyM41KyuRarvvUaPIDx3817tf0j6D0EK2tVI31ALy59gF2-t8EpLYWisZ7YeoA-k
+
+curl -v -s -X POST "https://api.ucloudbiz.olleh.com/d1/server/servers" --header "X-Auth-Token: $token" --header "Content-Type: text/plain" --data "{ "server": {  "name": "infranics", "key_name": "SaaSifyKey",  "flavorRef": "7f56ce4a-5b56-4b53-be63-f4dda5216b63", "availability_zone": "DX-M1", "networks": [{"uuid": "a3f25a44-efaa-47d7-bdd4-b78032662d68"}], "block_device_mapping_v2": [{"destination_type": "volume","boot_index": "0", "source_type": "image","volume_size": 50, "uuid": "84a10047-cbd8-4fb3-a743-85600a7b6961"}]}}"
