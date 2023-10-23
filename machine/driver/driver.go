@@ -105,7 +105,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "",
 		},
 		mcnflag.StringFlag{
-			EnvVar: "OS_PRIVATE_KEY_FILE",
+			EnvVar: "KT_PRIVATE_KEY_FILE",
 			Name:   "kt-private-key-file",
 			Usage:  "Private keyfile to use for SSH (absolute path)",
 			Value:  "",
