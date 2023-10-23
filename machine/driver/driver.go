@@ -12,6 +12,7 @@ import (
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
+	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/state"
 	"github.com/rancher/machine/libmachine/ssh"
 )
@@ -178,8 +179,15 @@ func (d *Driver) getClient() (string, error) {
 
 	fmt.Println("getClient funciton End...")
 	log.Debug("getClient funciton End...")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	return token, nil
+}
+
+// ssh와 함께 사용할 VM 이름 반환
+func (d *Driver) GetSSHHostname() (string, error) {
+	fmt.Println("GetSSHHostname function...")
+	time.Sleep(2 * time.Second)
+	return d.GetIP()
 }
 
 // KT 드라이버 이름을 리턴
@@ -209,97 +217,113 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 	fmt.Println("SetConfigFromFlags funciton End...")
 	log.Debug("SetConfigFromFlags funciton End...")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	return nil
 }
 
-// 드라이버를 구성하여 호스트를 생성
-func (d *Driver) Create() error {
-	log.Debug("Create function...")
-	fmt.Println("Create function...")
+func (d *Driver) GetURL() (string, error) {
+	fmt.Println("GetURL funciton...")
+	log.Debug("GetURL funciton...")
 
-	// if d.KeyPairName != "" {
-	// 	if err := d.loadSSHKey(); err != nil {
-	// 		return err
-	// 	}
-	// } else {
-	// 	d.KeyPairName = fmt.Sprintf("%s-%s", d.MachineName, mcnutils.GenerateRandomID())
-	// 	if err := d.createSSHKey(); err != nil {
-	// 		return err
-	// 	}
-	// }
+	ip, err := d.GetIP()
 
-	token, err := d.getClient()
+	fmt.Println("GetURL ip", ip)
 	if err != nil {
-		return errors.New("Create Token req is nil")
+		return "", err
 	}
-	// fmt.Println("Create token: ", token)
-	hostname := d.GetMachineName()
-	id, err := d.custom_createVM(hostname, token)
-	fmt.Println("Create funcion VMid: ", id)
+	if ip == "" {
+		return "", nil
+	}
 
-	fmt.Println("Create funciton End...")
-	log.Debug("Create funciton End...")
-	time.Sleep(5 * time.Second)
-	return nil
+	fmt.Println("GetURL funciton End...")
+	log.Debug("GetURL funciton End...")
+	time.Sleep(2 * time.Second)
+	return fmt.Sprintf("tcp://%s:%d", ip, 2376), nil
 }
 
-// ssh와 함께 사용할 VM 이름 반환
-func (d *Driver) GetSSHHostname() (string, error) {
-	fmt.Println("GetSSHHostname function...")
-	time.Sleep(5 * time.Second)
-	return d.GetIP()
-}
+func (d *Driver) GetIP() (string, error) {
+	fmt.Println("KT GetIP funciton...")
+	log.Debug("KT GetIP funciton...")
 
-func (d *Driver) loadSSHKey() error {
-	log.Debug("Loading Key Pair", d.KeyPairName)
-	fmt.Println("Loading Key Pair", d.KeyPairName)
+	fmt.Println("d.IPAddress: ", d.IPAddress)
+	log.Debug("d.IPAddress: ", d.IPAddress)
 
-	log.Debug("Loading Private Key from", d.PrivateKeyFile)
-	fmt.Println("Loading Private Key from", d.PrivateKeyFile)
-	privateKey, err := ioutil.ReadFile(d.PrivateKeyFile)
-	// publicKey, err := ioutil.ReadFile(d.KeyPairName)
+	if d.IPAddress != "" {
+		return d.IPAddress, nil
+	}
+
+	// token, err := d.getClient()
+	// fmt.Println("GETIP d.vmId: ", d.VMId)
+	// url := d.ApiEndpoint + `/d1/server/servers/` + d.VMId
+
+	fmt.Println("GetIP2 funciton...")
+	log.Debug("GetIP3 funciton...")
+
+	vmId, err := d.getVMId(d.GetMachineName())
+
+	fmt.Println("GETIP d.vmId or vmId: ", vmId)
+	log.Debug("GETIP2 d.vmId or vmId: ", vmId)
+	url := d.ApiEndpoint + `/d1/server/servers/` + vmId
+	method := "GET"
+	fmt.Println("GetIP url: ", method, url)
+
+	req, err := http.NewRequest(method, url, strings.NewReader(""))
 	if err != nil {
-		return err
+		fmt.Errorf("Error GetIP Request:", err)
 	}
-	if err := ioutil.WriteFile(d.privateSSHKeyPath(), privateKey, 0600); err != nil {
-		return err
-	}
-	// if err := ioutil.WriteFile(d.publicSSHKeyPath(), publicKey, 0600); err != nil {
-	// 	return err
-	// }
-	return nil
-}
-
-func (d *Driver) createSSHKey() error {
-	log.Debug("Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
-	if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
-		return err
-	}
-	publicKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
+	req.Header.Set("X-Auth-Token", d.Token)
+	fmt.Println("GetIP token: ", d.Token)
+	client := &http.Client{}
+	response, err := client.Do(req)
+	_ = response
 	if err != nil {
-		return err
+		fmt.Errorf("Error Creamaking Post Request:", err)
 	}
-	if publicKey != nil {
-		log.Debug("publicKey is not null")
+
+	defer response.Body.Close()
+	resBody, _ := ioutil.ReadAll(response.Body)
+	resBytes := []byte(resBody)
+	// fmt.Println("GetIP response", response)
+	var jsonRes map[string]interface{}
+	var addr string
+
+	_ = json.Unmarshal(resBytes, &jsonRes)
+	detail_map := jsonRes["server"].(map[string]interface{})
+	addresses := detail_map["addresses"].(map[string]interface{})
+	dmz, ok := addresses["DMZ"].([]interface{})
+	fmt.Println("GETIP dmz: ", dmz)
+
+	if !ok {
+		fmt.Println("DMZ 키가 존재하지 않거나 배열이 아닙니다.")
 	}
-	return nil
-}
 
-func (d *Driver) privateSSHKeyPath() string {
-	fmt.Println("privateSSHKeyPath function...", d.PrivateKeyFile)
-	return d.GetSSHKeyPath()
-}
+	if len(dmz) > 0 {
+		firstItem, ok := dmz[0].(map[string]interface{})
+		if !ok {
+			fmt.Println("DMZ 배열의 첫 번째 요소가 맵이 아닙니다.")
+		}
 
-func (d *Driver) publicSSHKeyPath() string {
-	return d.GetSSHKeyPath() + ".pub"
+		addr, ok = firstItem["addr"].(string)
+		if !ok {
+			fmt.Println("addr 키가 존재하지 않거나 문자열이 아닙니다.")
+		}
+
+	} else {
+		fmt.Errorf("dmz가 없습니다")
+	}
+
+	d.IPAddress = addr
+
+	fmt.Println("addr: ", addr)
+
+	fmt.Println("GetIP funciton End...")
+	log.Debug("GetIP funciton End...")
+	time.Sleep(2 * time.Second)
+	return "", fmt.Errorf("No IP found for the machine")
 }
 
 // 호스트를 생성한 후 상태 체크
 func (d *Driver) GetState() (state.State, error) {
-	fmt.Println("GetState funciton...")
-	log.Debug("GetState funciton...")
-	time.Sleep(5 * time.Second)
 	hostname := d.GetMachineName()
 
 	// token, err := d.getClient()
@@ -337,11 +361,11 @@ func (d *Driver) GetState() (state.State, error) {
 	status_detail_map := jsonRes["server"].(map[string]interface{})
 	status := status_detail_map["status"].(string)
 
-	fmt.Println("status: ", status)
-
 	fmt.Println("GetState function End...")
 	log.Debug("GetState function End...")
-	time.Sleep(5 * time.Second)
+	fmt.Println("status: ", status)
+	log.Debug("status: ", status)
+	time.Sleep(2 * time.Second)
 
 	switch status {
 	case "ACTIVE":
@@ -360,113 +384,58 @@ func (d *Driver) GetState() (state.State, error) {
 	return state.None, nil
 }
 
-func (d *Driver) GetURL() (string, error) {
-	fmt.Println("GetURL funciton...")
-	log.Debug("GetURL funciton...")
+// 드라이버를 구성하여 호스트를 생성
+func (d *Driver) Create() error {
+	log.Debug("Create function...")
+	fmt.Println("Create function...")
 
-	ip, err := d.GetIP()
-
-	fmt.Println("GetURL ip", ip)
-	if err != nil {
-		return "", err
-	}
-	if ip == "" {
-		return "", nil
+	if d.PrivateKeyFile != "" {
+		d.createPrivateKey()
 	}
 
-	fmt.Println("GetURL funciton End...")
-	log.Debug("GetURL funciton End...")
-	time.Sleep(5 * time.Second)
-	return fmt.Sprintf("tcp://%s:%d", ip, 2376), nil
-}
+	// time.Sleep(10 * time.Second)
 
-// 호스트 강제 종료
-func (d *Driver) Kill() error {
-	fmt.Println("Kill funciton...")
-	log.Debug("Kill funciton...")
+	log.Debug("[KT.go] Create funciton PrivateKeyFile: ", d.KeyPairName)
+	log.Info("[KT.go] Create funciton PrivateKeyFile: ", d.KeyPairName)
+	// time.Sleep(10 * time.Second)
+
+	// log.Debug("[KT.go] Create funciton &PrivateKeyFile: ", &d.KeyPairName)
+	// log.Info("[KT.go] Create funciton &PrivateKeyFile: ", &d.KeyPairName)
+	// time.Sleep(10 * time.Second)
+
+	// log.Debug("[KT.go] Create funciton d.PrivateKeyFile: ", d.PrivateKeyFile)
+	// log.Info("[KT.go] Create funciton d.PrivateKeyFile: ", d.PrivateKeyFile)
+	// time.Sleep(10 * time.Second)
+
+	if d.KeyPairName != "" {
+		fmt.Println("[KT.go]Create funciton d.KeyPairName if ...")
+		log.Debug("[KT.go]Create funciton d.KeyPairName if ...")
+		time.Sleep(2 * time.Second)
+		if err := d.loadSSHKey(); err != nil {
+			return err
+		}
+	} else {
+		d.KeyPairName = fmt.Sprintf("%s-%s", d.MachineName, mcnutils.GenerateRandomID())
+		fmt.Println("Create funciton d.KeyPairName else ...", d.KeyPairName)
+		log.Debug("Create funciton d.KeyPairName else ...", d.KeyPairName)
+		// time.Sleep(2 * time.Second)
+		if err := d.createSSHKey(); err != nil {
+			return err
+		}
+	}
 
 	token, err := d.getClient()
-	vmId := d.GetMachineName()
-
-	// KT API VM 삭제
-	url := d.ApiEndpoint + "/d1/server/servers/" + vmId + `/action`
-	method := "POST"
-	data := `{"forceDelete": null}`
-	req, err := http.NewRequest(method, url, strings.NewReader(data))
-
-	fmt.Println("Remove url: ", method, url)
-
 	if err != nil {
-		fmt.Errorf("Error Creating Request:", err)
+		return errors.New("Create Token req is nil")
 	}
-	req.Header.Set("X-Auth-Token", token)
-	if err != nil {
-		fmt.Errorf("Error Creamaking Post Request:", err)
-		// return
-	}
-	client := &http.Client{}
-	response, err := client.Do(req)
+	// fmt.Println("Create token: ", token)
+	hostname := d.GetMachineName()
+	id, err := d.custom_createVM(hostname, token)
+	fmt.Println("Create funcion VMid: ", id)
 
-	defer req.Body.Close()
-
-	if response.StatusCode < 200 || response.StatusCode > 300 {
-		fmt.Errorf("unable to Stop VM ")
-	}
-	fmt.Println("Remove funciton End...")
-	log.Debug("Remove funciton End...")
-
-	fmt.Println("Kill funciton End...")
-	log.Debug("Kill funciton End...")
-	time.Sleep(5 * time.Second)
-	return d.Stop()
-
-}
-
-// // 호스트 삭제
-func (d *Driver) Remove() error {
-	fmt.Println("Remove funciton...")
-	log.Debug("Remove funciton...")
-	token, err := d.getClient()
-
-	vmId := d.GetMachineName()
-
-	// KT API VM 삭제
-	url := d.ApiEndpoint + "/d1/server/servers/" + vmId
-	method := "DELETE"
-	req, err := http.NewRequest(method, url, nil)
-
-	fmt.Println("Remove url: ", method, url)
-
-	if err != nil {
-		fmt.Errorf("Error Creating Request:", err)
-	}
-	req.Header.Set("X-Auth-Token", token)
-	if err != nil {
-		fmt.Errorf("Error Creamaking Post Request:", err)
-		// return
-	}
-	client := &http.Client{}
-	response, err := client.Do(req)
-
-	defer req.Body.Close()
-
-	if response.StatusCode < 200 || response.StatusCode > 300 {
-		fmt.Errorf("unable to Stop VM ")
-	}
-	fmt.Println("Remove funciton End...")
-	log.Debug("Remove funciton End...")
-	time.Sleep(5 * time.Second)
-	return nil
-}
-
-// // 호스트 재시작
-func (d *Driver) Restart() error {
-	fmt.Println("Restart funciton...")
-	log.Debug("Restart funciton...")
-
-	fmt.Println("Restart funciton End...")
-	log.Debug("Restart funciton End...")
-	time.Sleep(5 * time.Second)
+	fmt.Println("Create function End...")
+	log.Debug("Create function End...")
+	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -477,7 +446,7 @@ func (d *Driver) Start() error {
 
 	fmt.Println("Start funciton End...")
 	log.Debug("Start funciton End...")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -525,8 +494,158 @@ func (d *Driver) Stop() error {
 
 	fmt.Println("Stop funciton End...")
 	log.Debug("Stop funciton End...")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	return err
+}
+
+// // 호스트 재시작
+func (d *Driver) Restart() error {
+	fmt.Println("Restart funciton...")
+	log.Debug("Restart funciton...")
+
+	fmt.Println("Restart funciton End...")
+	log.Debug("Restart funciton End...")
+	time.Sleep(2 * time.Second)
+	return nil
+}
+
+// 호스트 강제 종료
+func (d *Driver) Kill() error {
+	fmt.Println("Kill funciton...")
+	log.Debug("Kill funciton...")
+
+	token, err := d.getClient()
+	vmId := d.GetMachineName()
+
+	// KT API VM 삭제
+	url := d.ApiEndpoint + "/d1/server/servers/" + vmId + `/action`
+	method := "POST"
+	data := `{"forceDelete": null}`
+	req, err := http.NewRequest(method, url, strings.NewReader(data))
+
+	fmt.Println("Remove url: ", method, url)
+
+	if err != nil {
+		fmt.Errorf("Error Creating Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", token)
+	if err != nil {
+		fmt.Errorf("Error Creamaking Post Request:", err)
+		// return
+	}
+	client := &http.Client{}
+	response, err := client.Do(req)
+
+	defer req.Body.Close()
+
+	if response.StatusCode < 200 || response.StatusCode > 300 {
+		fmt.Errorf("unable to Stop VM ")
+	}
+	fmt.Println("Remove funciton End...")
+	log.Debug("Remove funciton End...")
+
+	fmt.Println("Kill funciton End...")
+	log.Debug("Kill funciton End...")
+	time.Sleep(2 * time.Second)
+	return d.Stop()
+
+}
+
+// // 호스트 삭제
+func (d *Driver) Remove() error {
+	fmt.Println("Remove funciton...")
+	log.Debug("Remove funciton...")
+	token, err := d.getClient()
+
+	vmId, err := d.getVMId(d.GetMachineName())
+	if err != nil {
+		fmt.Errorf("Remove Fail, vmId is nil: ", err)
+	}
+
+	// KT API VM 삭제
+	url := d.ApiEndpoint + "/d1/server/servers/" + vmId
+	method := "DELETE"
+	req, err := http.NewRequest(method, url, nil)
+
+	fmt.Println("Remove url: ", method, url)
+
+	if err != nil {
+		fmt.Errorf("Error Creating Request:", err)
+	}
+	req.Header.Set("X-Auth-Token", token)
+	if err != nil {
+		fmt.Errorf("Error Creamaking Post Request:", err)
+		// return
+	}
+	client := &http.Client{}
+	response, err := client.Do(req)
+
+	defer req.Body.Close()
+
+	if response.StatusCode < 200 || response.StatusCode > 300 {
+		fmt.Errorf("unable to Stop VM ")
+	}
+	fmt.Println("Remove funciton End...")
+	log.Debug("Remove funciton End...")
+	time.Sleep(2 * time.Second)
+	return nil
+}
+
+func (d *Driver) loadSSHKey() error {
+	log.Debug("Loading Key Pair", d.KeyPairName)
+	fmt.Println("Loading Key Pair", d.KeyPairName)
+
+	fmt.Println("loadSSHKey funciton d.PrivateKeyFile", d.PrivateKeyFile)
+	log.Debug("loadSSHKey funciton d.PrivateKeyFile", d.PrivateKeyFile)
+	// time.Sleep(10 * time.Second)
+	privateKey, err := ioutil.ReadFile(d.privateSSHKeyPath())
+	fmt.Println("loadSSHKey funciton privateKey...", privateKey)
+	log.Debug("loadSSHKey funciton privateKeynd...", privateKey)
+	// time.Sleep(10 * time.Second)
+	// fmt.Println("loadSSHKey function ...", privateKey)
+	// log.Debug("loadSSHKey function ...", privateKey)
+	// time.Sleep(2 * time.Second)
+	// publicKey, err := ioutil.ReadFile(d.KeyPairName)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(d.privateSSHKeyPath(), privateKey, 0600); err != nil {
+		return err
+	}
+	// if err := ioutil.WriteFile(d.publicSSHKeyPath(), publicKey, 0600); err != nil {
+	// 	return err
+	// }
+	return nil
+}
+
+func (d *Driver) createSSHKey() error {
+	log.Debug("Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
+	fmt.Println("Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
+	// time.Sleep(10 * time.Second)
+
+	log.Debug("Creating Key Pair d.publicSSHKeyPath()", d.publicSSHKeyPath())
+	fmt.Println("Creating Key Pair d.publicSSHKeyPath()", d.publicSSHKeyPath())
+	// time.Sleep(10 * time.Second)
+
+	if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
+		return err
+	}
+	publicKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
+	if err != nil {
+		return err
+	}
+	if publicKey != nil {
+		log.Debug("publicKey is not null")
+	}
+	return nil
+}
+
+func (d *Driver) privateSSHKeyPath() string {
+	return d.GetSSHKeyPath()
+}
+
+func (d *Driver) publicSSHKeyPath() string {
+	return d.GetSSHKeyPath() + ".pub"
 }
 
 // // 드라이버를 생성할 준비가 되었는지 확인
@@ -560,7 +679,7 @@ func (d *Driver) PreCreateCheck() error {
 
 	fmt.Println("PreCreateCheck funciton End...")
 	log.Debug("PreCreateCheck funciton End...")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -636,15 +755,10 @@ func (d *Driver) getVMId(hostname string) (string, error) {
 
 	fmt.Println("getVMId funciton End...")
 	log.Debug("getVMId funciton End...")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	return vmId, nil
 }
-
-// // SSH에 사용할 사용자 이름 반환
-// func (d *Driver) getSSHUsername() string {
-// 	return defaultSSHUser
-// }
 
 func (d *Driver) custom_createVM(hostname string, token string) (string, error) {
 	fmt.Println("custom_createVM funciton...")
@@ -686,7 +800,7 @@ func (d *Driver) custom_createVM(hostname string, token string) (string, error) 
 		fmt.Errorf("Error Creating Request:", err)
 	}
 	req.Header.Set("X-Auth-Token", token)
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	client := &http.Client{}
 	response, err := client.Do(req)
 	_ = response
@@ -709,89 +823,40 @@ func (d *Driver) custom_createVM(hostname string, token string) (string, error) 
 
 	fmt.Println("custom_createVM funciton End...")
 	log.Debug("custom_createVM funciton End...")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	return id, err
 }
 
-func (d *Driver) GetIP() (string, error) {
-	fmt.Println("GetIP funciton...")
-	log.Debug("GetIP funciton...")
+func (d *Driver) createPrivateKey() error {
+	log.Debug("[KT.go]createSSHKey ...: ", &d.KeyPairName)
+	fmt.Println("[KT.go]createSSHKey ...: ", &d.KeyPairName)
+	time.Sleep(2 * time.Second)
+	log.Debug("[KT.go]Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
+	fmt.Println("[KT.go]Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
+	// time.Sleep(10 * time.Second)
 
-	fmt.Println("d.IPAddress: ", d.IPAddress)
-	log.Debug("d.IPAddress: ", d.IPAddress)
+	keyString := d.PrivateKeyFile
+	// 문자열을 ASCII 코드로 변환하여 저장할 슬라이스 생성
+	asciiBytes := make([]byte, len(keyString))
 
-	if d.IPAddress != "" {
-		return d.IPAddress, nil
+	// 문자열을 ASCII 코드로 변환
+	for i, char := range keyString {
+		asciiBytes[i] = byte(char)
 	}
 
-	// token, err := d.getClient()
-	// fmt.Println("GETIP d.vmId: ", d.VMId)
-	// url := d.ApiEndpoint + `/d1/server/servers/` + d.VMId
-
-	fmt.Println("GetIP2 funciton...")
-	log.Debug("GetIP3 funciton...")
-
-	vmId, err := d.getVMId(d.GetMachineName())
-
-	fmt.Println("GETIP d.vmId or vmId: ", vmId)
-	log.Debug("GETIP2 d.vmId or vmId: ", vmId)
-	url := d.ApiEndpoint + `/d1/server/servers/` + vmId
-	method := "GET"
-	fmt.Println("GetIP url: ", method, url)
-
-	req, err := http.NewRequest(method, url, strings.NewReader(""))
-	if err != nil {
-		fmt.Errorf("Error GetIP Request:", err)
-	}
-	req.Header.Set("X-Auth-Token", d.Token)
-	fmt.Println("GetIP token: ", d.Token)
-	client := &http.Client{}
-	response, err := client.Do(req)
-	_ = response
-	if err != nil {
-		fmt.Errorf("Error Creamaking Post Request:", err)
+	// 변환된 ASCII 코드를 파일로 저장
+	if err := ioutil.WriteFile(d.privateSSHKeyPath(), asciiBytes, 0600); err != nil {
+		return err
 	}
 
-	defer response.Body.Close()
-	resBody, _ := ioutil.ReadAll(response.Body)
-	resBytes := []byte(resBody)
-	// fmt.Println("GetIP response", response)
-	var jsonRes map[string]interface{}
-	var addr string
+	log.Debug("Save keyfile: asciiBytes", asciiBytes)
+	fmt.Println("Save keyfile: asciiBytes", asciiBytes)
+	// time.Sleep(10 * time.Second)
 
-	_ = json.Unmarshal(resBytes, &jsonRes)
-	detail_map := jsonRes["server"].(map[string]interface{})
-	addresses := detail_map["addresses"].(map[string]interface{})
-	dmz, ok := addresses["DMZ"].([]interface{})
-	fmt.Println("GETIP dmz: ", dmz)
+	log.Debug("privatesshkeypath: ", d.privateSSHKeyPath())
+	fmt.Println("privatesshkeypath: ", d.privateSSHKeyPath())
+	// time.Sleep(10 * time.Second)
 
-	if !ok {
-		fmt.Println("DMZ 키가 존재하지 않거나 배열이 아닙니다.")
-	}
-
-	if len(dmz) > 0 {
-		firstItem, ok := dmz[0].(map[string]interface{})
-		if !ok {
-			fmt.Println("DMZ 배열의 첫 번째 요소가 맵이 아닙니다.")
-		}
-
-		addr, ok = firstItem["addr"].(string)
-		if !ok {
-			fmt.Println("addr 키가 존재하지 않거나 문자열이 아닙니다.")
-		}
-
-	} else {
-		fmt.Errorf("dmz가 없습니다")
-	}
-
-	d.IPAddress = addr
-
-	fmt.Println("addr: ", addr)
-
-	fmt.Println("GetIP funciton End...")
-	log.Debug("GetIP funciton End...")
-	time.Sleep(5 * time.Second)
-	return "", fmt.Errorf("No IP found for the machine")
-
+	return nil
 }
