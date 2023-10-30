@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strings"
-	"time"
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/state"
-	"github.com/rancher/machine/libmachine/ssh"
 )
 
 const (
@@ -179,14 +178,12 @@ func (d *Driver) getClient() (string, error) {
 
 	fmt.Println("getClient funciton End...")
 	log.Debug("getClient funciton End...")
-	time.Sleep(2 * time.Second)
 	return token, nil
 }
 
 // ssh와 함께 사용할 VM 이름 반환
 func (d *Driver) GetSSHHostname() (string, error) {
 	fmt.Println("GetSSHHostname function...")
-	time.Sleep(2 * time.Second)
 	return d.GetIP()
 }
 
@@ -217,7 +214,6 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 	fmt.Println("SetConfigFromFlags funciton End...")
 	log.Debug("SetConfigFromFlags funciton End...")
-	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -237,7 +233,6 @@ func (d *Driver) GetURL() (string, error) {
 
 	fmt.Println("GetURL funciton End...")
 	log.Debug("GetURL funciton End...")
-	time.Sleep(2 * time.Second)
 	return fmt.Sprintf("tcp://%s:%d", ip, 2376), nil
 }
 
@@ -318,7 +313,6 @@ func (d *Driver) GetIP() (string, error) {
 
 	fmt.Println("GetIP funciton End...")
 	log.Debug("GetIP funciton End...")
-	time.Sleep(2 * time.Second)
 	return "", fmt.Errorf("No IP found for the machine")
 }
 
@@ -365,7 +359,6 @@ func (d *Driver) GetState() (state.State, error) {
 	log.Debug("GetState function End...")
 	fmt.Println("status: ", status)
 	log.Debug("status: ", status)
-	time.Sleep(2 * time.Second)
 
 	switch status {
 	case "ACTIVE":
@@ -390,7 +383,7 @@ func (d *Driver) Create() error {
 	fmt.Println("Create function...")
 
 	if d.PrivateKeyFile != "" {
-		d.createPrivateKey()
+		d.createSSHKey()
 	}
 
 	// time.Sleep(10 * time.Second)
@@ -410,7 +403,6 @@ func (d *Driver) Create() error {
 	if d.KeyPairName != "" {
 		fmt.Println("[KT.go]Create funciton d.KeyPairName if ...")
 		log.Debug("[KT.go]Create funciton d.KeyPairName if ...")
-		time.Sleep(2 * time.Second)
 		if err := d.loadSSHKey(); err != nil {
 			return err
 		}
@@ -418,7 +410,6 @@ func (d *Driver) Create() error {
 		d.KeyPairName = fmt.Sprintf("%s-%s", d.MachineName, mcnutils.GenerateRandomID())
 		fmt.Println("Create funciton d.KeyPairName else ...", d.KeyPairName)
 		log.Debug("Create funciton d.KeyPairName else ...", d.KeyPairName)
-		// time.Sleep(2 * time.Second)
 		if err := d.createSSHKey(); err != nil {
 			return err
 		}
@@ -435,7 +426,6 @@ func (d *Driver) Create() error {
 
 	fmt.Println("Create function End...")
 	log.Debug("Create function End...")
-	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -446,7 +436,6 @@ func (d *Driver) Start() error {
 
 	fmt.Println("Start funciton End...")
 	log.Debug("Start funciton End...")
-	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -494,7 +483,6 @@ func (d *Driver) Stop() error {
 
 	fmt.Println("Stop funciton End...")
 	log.Debug("Stop funciton End...")
-	time.Sleep(2 * time.Second)
 	return err
 }
 
@@ -505,7 +493,6 @@ func (d *Driver) Restart() error {
 
 	fmt.Println("Restart funciton End...")
 	log.Debug("Restart funciton End...")
-	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -546,7 +533,6 @@ func (d *Driver) Kill() error {
 
 	fmt.Println("Kill funciton End...")
 	log.Debug("Kill funciton End...")
-	time.Sleep(2 * time.Second)
 	return d.Stop()
 
 }
@@ -587,7 +573,6 @@ func (d *Driver) Remove() error {
 	}
 	fmt.Println("Remove funciton End...")
 	log.Debug("Remove funciton End...")
-	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -597,46 +582,54 @@ func (d *Driver) loadSSHKey() error {
 
 	fmt.Println("loadSSHKey funciton d.PrivateKeyFile", d.PrivateKeyFile)
 	log.Debug("loadSSHKey funciton d.PrivateKeyFile", d.PrivateKeyFile)
-	// time.Sleep(10 * time.Second)
+
+	fmt.Println("loadSSHKey funciton privateSSHKeyPath...", d.privateSSHKeyPath())
+	log.Debug("loadSSHKey funciton privateSSHKeyPath...", d.privateSSHKeyPath())
+
+	fmt.Println("loadSSHKey funciton publicSSHKeyPath...", d.publicSSHKeyPath())
+	log.Debug("loadSSHKey funciton publicSSHKeyPath...", d.publicSSHKeyPath())
+
+	keyString := d.PrivateKeyFile
+	// 문자열을 ASCII 코드로 변환하여 저장할 슬라이스 생성
+	asciiBytes := make([]byte, len(keyString))
+
+	// 문자열을 ASCII 코드로 변환
+	for i, char := range keyString {
+		asciiBytes[i] = byte(char)
+	}
+
+	fmt.Println("loadSSHKey funciton asciiBytes...", asciiBytes)
+	log.Debug("loadSSHKey funciton asciiBytes...", asciiBytes)
+	fmt.Println(reflect.TypeOf(asciiBytes))
+	log.Debug(reflect.TypeOf(asciiBytes))
+
 	privateKey, err := ioutil.ReadFile(d.privateSSHKeyPath())
-	fmt.Println("loadSSHKey funciton privateKey...", privateKey)
-	log.Debug("loadSSHKey funciton privateKeynd...", privateKey)
-	// time.Sleep(10 * time.Second)
-	// fmt.Println("loadSSHKey function ...", privateKey)
-	// log.Debug("loadSSHKey function ...", privateKey)
-	// time.Sleep(2 * time.Second)
-	// publicKey, err := ioutil.ReadFile(d.KeyPairName)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("loadSSHKey funciton privateKey...", privateKey)
+	log.Debug("loadSSHKey funciton privateKey...", privateKey)
+
+	// if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
+	// 	return err
+	// }
+
+	// publicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", d.GetSSHKeyPath()))
+	// // publicKey, err := ioutil.ReadFile(d.GetSSHKeyPath())
+	// if err != nil {
+	// 	return err
+	// }
+
+	// fmt.Println("loadSSHKey funciton publicKey...", publicKey)
+	// log.Debug("loadSSHKey funciton publicKey...", publicKey)
+
 	if err := ioutil.WriteFile(d.privateSSHKeyPath(), privateKey, 0600); err != nil {
 		return err
 	}
 	// if err := ioutil.WriteFile(d.publicSSHKeyPath(), publicKey, 0600); err != nil {
 	// 	return err
 	// }
-	return nil
-}
-
-func (d *Driver) createSSHKey() error {
-	log.Debug("Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
-	fmt.Println("Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
-	// time.Sleep(10 * time.Second)
-
-	log.Debug("Creating Key Pair d.publicSSHKeyPath()", d.publicSSHKeyPath())
-	fmt.Println("Creating Key Pair d.publicSSHKeyPath()", d.publicSSHKeyPath())
-	// time.Sleep(10 * time.Second)
-
-	if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
-		return err
-	}
-	publicKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
-	if err != nil {
-		return err
-	}
-	if publicKey != nil {
-		log.Debug("publicKey is not null")
-	}
 	return nil
 }
 
@@ -679,7 +672,6 @@ func (d *Driver) PreCreateCheck() error {
 
 	fmt.Println("PreCreateCheck funciton End...")
 	log.Debug("PreCreateCheck funciton End...")
-	time.Sleep(2 * time.Second)
 	return nil
 }
 
@@ -755,7 +747,6 @@ func (d *Driver) getVMId(hostname string) (string, error) {
 
 	fmt.Println("getVMId funciton End...")
 	log.Debug("getVMId funciton End...")
-	time.Sleep(2 * time.Second)
 
 	return vmId, nil
 }
@@ -800,7 +791,6 @@ func (d *Driver) custom_createVM(hostname string, token string) (string, error) 
 		fmt.Errorf("Error Creating Request:", err)
 	}
 	req.Header.Set("X-Auth-Token", token)
-	time.Sleep(2 * time.Second)
 	client := &http.Client{}
 	response, err := client.Do(req)
 	_ = response
@@ -823,18 +813,19 @@ func (d *Driver) custom_createVM(hostname string, token string) (string, error) 
 
 	fmt.Println("custom_createVM funciton End...")
 	log.Debug("custom_createVM funciton End...")
-	time.Sleep(2 * time.Second)
 
 	return id, err
 }
 
-func (d *Driver) createPrivateKey() error {
-	log.Debug("[KT.go]createSSHKey ...: ", &d.KeyPairName)
-	fmt.Println("[KT.go]createSSHKey ...: ", &d.KeyPairName)
-	time.Sleep(2 * time.Second)
-	log.Debug("[KT.go]Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
-	fmt.Println("[KT.go]Creating Key Pair...", map[string]string{"Name": d.KeyPairName})
-	// time.Sleep(10 * time.Second)
+func (d *Driver) createSSHKey() error {
+	log.Debug("[KT.go]createSSHKey &d.KeyPairName .. map[string]string...: ", &d.KeyPairName, map[string]string{"Name": d.KeyPairName})
+	fmt.Println("[KT.go]createSSHKey &d.KeyPairName .. map[string]string...: ", &d.KeyPairName, map[string]string{"Name": d.KeyPairName})
+
+	log.Debug("privatesshkeypath: ", d.privateSSHKeyPath())
+	fmt.Println("privatesshkeypath: ", d.privateSSHKeyPath())
+
+	log.Debug("publicSSHKeyPath: ", d.publicSSHKeyPath())
+	fmt.Println("publicSSHKeyPath: ", d.publicSSHKeyPath())
 
 	keyString := d.PrivateKeyFile
 	// 문자열을 ASCII 코드로 변환하여 저장할 슬라이스 생성
@@ -850,13 +841,35 @@ func (d *Driver) createPrivateKey() error {
 		return err
 	}
 
-	log.Debug("Save keyfile: asciiBytes", asciiBytes)
-	fmt.Println("Save keyfile: asciiBytes", asciiBytes)
+	// log.Debug("Save keyfile: asciiBytes", asciiBytes)
+	// fmt.Println("Save keyfile: asciiBytes", asciiBytes)
+	// // time.Sleep(10 * time.Second)
+
+	// if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
+	// 	return err
+	// }
+	// publicKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
+	// fmt.Println("createPrivateKey funciton publicKey...", publicKey)
+	// log.Debug("createPrivateKey funciton publicKey...", publicKey)
+	// if err != nil {
+	// 	return err
+	// }
+	// if err := ioutil.WriteFile(d.GetSSHKeyPath()+".pub", publicKey, 0600); err != nil {
+	// 	return err
+	// }
+
 	// time.Sleep(10 * time.Second)
 
-	log.Debug("privatesshkeypath: ", d.privateSSHKeyPath())
-	fmt.Println("privatesshkeypath: ", d.privateSSHKeyPath())
-	// time.Sleep(10 * time.Second)
+	// 	log.Debug("[KT.go] createPrivateKey publicKey: ", publicKey)
+	// fmt.Println("[KT.go] createPrivateKey publicKey::", publicKey)
+	// if publicKey != nil {
+	// 	log.Errorf("Error generating ssh key")
+	// }
+
+	// cmd := exec.Command("ssh-keygen", "-f", "/opt/jail/"+d.GetSSHKeyPath(), "-y", ">", "/opt/jail/"+d.GetSSHKeyPath()+".pub")
+	// log.Debug("publicSSHKeyPath: ", cmd)
+	// fmt.Println("publicSSHKeyPath: ", cmd)
+	// cmd.CombinedOutput()
 
 	return nil
 }
