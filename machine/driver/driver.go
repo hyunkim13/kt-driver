@@ -1,5 +1,7 @@
 package driver
 
+// 23.11.01 hskim
+// KT NodeDriver 개발.
 import (
 	"encoding/json"
 	"errors"
@@ -10,7 +12,8 @@ import (
 	"strings"
 
 	"github.com/docker/machine/libmachine/drivers"
-	"github.com/docker/machine/libmachine/log"
+
+	// "github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/state"
@@ -43,10 +46,10 @@ type Driver struct {
 	IPAddress      string
 }
 
-// NodeTemplate에 보이는 화면, VM 설정할 수 잇는 Flag
+// NodeTemplate에 보이는 화면,Flag를 설정할 수 있다.
 func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	fmt.Println("GetCreateFlags funciton...")
-	log.Debug("GetCreateFlags funciton...")
+	// log.Debug("GetCreateFlags funciton...")
 	return []mcnflag.Flag{
 
 		mcnflag.StringFlag{
@@ -136,9 +139,9 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	}
 }
 
-// KT 드라이버의 새 인스턴스를 생성하고 반환
+// KT 드라이버를 생성하고 반환
 func NewDriver() *Driver {
-	log.Debug("NewDriver function...")
+	// log.Debug("NewDriver function...")
 	return &Driver{
 		BaseDriver: &drivers.BaseDriver{
 			SSHUser: defaultSSHUser,
@@ -147,10 +150,11 @@ func NewDriver() *Driver {
 	}
 }
 
-// KT API 클라이언트를 생성(토큰발급)
+// KT API 클라이언트 생성(토큰발급)
+// NodeTemplate에서 ID와 PW를 받아 KT API를 이용해서 토큰 발급
 func (d *Driver) getClient() (string, error) {
 	fmt.Println("getClient funciton...")
-	log.Debug("getClient funciton...")
+	// log.Debug("getClient funciton...")
 	url := d.ApiEndpoint + "/d1/identity/auth/tokens"
 	method := "POST"
 	data := `{"auth": {"identity": {"methods":["password"],"password":{"user":{"domain": {"id": "default"},"name": "` + d.UserId + `","password":"` + d.UserPassword + `"}}},"scope": {"project": {"domain": {"id": "default"},"name": "` + d.UserId + `"}}}}`
@@ -177,7 +181,7 @@ func (d *Driver) getClient() (string, error) {
 	d.Token = token
 
 	fmt.Println("getClient funciton End...")
-	log.Debug("getClient funciton End...")
+	// log.Debug("getClient funciton End...")
 	return token, nil
 }
 
@@ -189,14 +193,14 @@ func (d *Driver) GetSSHHostname() (string, error) {
 
 // KT 드라이버 이름을 리턴
 func (d *Driver) DriverName() string {
-	log.Debug("DriverName function...")
+	// log.Debug("DriverName function...")
 	return "kt"
 }
 
 // CreateFlags에서 반환된 개체로 드라이버 구성
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	fmt.Println("SetConfigFromFlags funciton...")
-	log.Debug("SetConfigFromFlags funciton...")
+	// log.Debug("SetConfigFromFlags funciton...")
 	d.ApiEndpoint = flags.String("kt-api-endpoint-url")
 	d.ActiveTimeout = flags.Int("kt-active-timeout")
 	d.FlavorId = flags.String("kt-flavor-id")
@@ -213,13 +217,13 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.SSHPort = flags.Int("kt-ssh-port")
 
 	fmt.Println("SetConfigFromFlags funciton End...")
-	log.Debug("SetConfigFromFlags funciton End...")
+	// log.Debug("SetConfigFromFlags funciton End...")
 	return nil
 }
 
 func (d *Driver) GetURL() (string, error) {
 	fmt.Println("GetURL funciton...")
-	log.Debug("GetURL funciton...")
+	// log.Debug("GetURL funciton...")
 
 	ip, err := d.GetIP()
 
@@ -232,16 +236,17 @@ func (d *Driver) GetURL() (string, error) {
 	}
 
 	fmt.Println("GetURL funciton End...")
-	log.Debug("GetURL funciton End...")
+	// log.Debug("GetURL funciton End...")
 	return fmt.Sprintf("tcp://%s:%d", ip, 2376), nil
 }
 
+// VM의 IP를 추출, VM 이름을 이용하여 상세조회를 해야하고 ip를 추출
 func (d *Driver) GetIP() (string, error) {
 	fmt.Println("KT GetIP funciton...")
-	log.Debug("KT GetIP funciton...")
+	// log.Debug("KT GetIP funciton...")
 
 	fmt.Println("d.IPAddress: ", d.IPAddress)
-	log.Debug("d.IPAddress: ", d.IPAddress)
+	// log.Debug("d.IPAddress: ", d.IPAddress)
 
 	if d.IPAddress != "" {
 		return d.IPAddress, nil
@@ -252,12 +257,12 @@ func (d *Driver) GetIP() (string, error) {
 	// url := d.ApiEndpoint + `/d1/server/servers/` + d.VMId
 
 	fmt.Println("GetIP2 funciton...")
-	log.Debug("GetIP3 funciton...")
+	// log.Debug("GetIP3 funciton...")
 
 	vmId, err := d.getVMId(d.GetMachineName())
 
 	fmt.Println("GETIP d.vmId or vmId: ", vmId)
-	log.Debug("GETIP2 d.vmId or vmId: ", vmId)
+	// log.Debug("GETIP2 d.vmId or vmId: ", vmId)
 	url := d.ApiEndpoint + `/d1/server/servers/` + vmId
 	method := "GET"
 	fmt.Println("GetIP url: ", method, url)
@@ -312,11 +317,11 @@ func (d *Driver) GetIP() (string, error) {
 	fmt.Println("addr: ", addr)
 
 	fmt.Println("GetIP funciton End...")
-	log.Debug("GetIP funciton End...")
+	// log.Debug("GetIP funciton End...")
 	return "", fmt.Errorf("No IP found for the machine")
 }
 
-// 호스트를 생성한 후 상태 체크
+// VM을 생성 후 상태체크를 해야함
 func (d *Driver) GetState() (state.State, error) {
 	hostname := d.GetMachineName()
 
@@ -356,9 +361,9 @@ func (d *Driver) GetState() (state.State, error) {
 	status := status_detail_map["status"].(string)
 
 	fmt.Println("GetState function End...")
-	log.Debug("GetState function End...")
+	// log.Debug("GetState function End...")
 	fmt.Println("status: ", status)
-	log.Debug("status: ", status)
+	// log.Debug("status: ", status)
 
 	switch status {
 	case "ACTIVE":
@@ -377,19 +382,20 @@ func (d *Driver) GetState() (state.State, error) {
 	return state.None, nil
 }
 
-// 드라이버를 구성하여 호스트를 생성
+// VM을 생성
 func (d *Driver) Create() error {
-	log.Debug("Create function...")
+	// log.Debug("Create function...")
 	fmt.Println("Create function...")
 
+	// 특정 경로에 Keyfile을 생성
 	if d.PrivateKeyFile != "" {
 		d.createSSHKey()
 	}
 
 	// time.Sleep(10 * time.Second)
 
-	log.Debug("[KT.go] Create funciton PrivateKeyFile: ", d.KeyPairName)
-	log.Info("[KT.go] Create funciton PrivateKeyFile: ", d.KeyPairName)
+	// log.Debug("[KT.go] Create funciton PrivateKeyFile: ", d.KeyPairName)
+	// log.Info("[KT.go] Create funciton PrivateKeyFile: ", d.KeyPairName)
 	// time.Sleep(10 * time.Second)
 
 	// log.Debug("[KT.go] Create funciton &PrivateKeyFile: ", &d.KeyPairName)
@@ -398,18 +404,21 @@ func (d *Driver) Create() error {
 
 	// log.Debug("[KT.go] Create funciton d.PrivateKeyFile: ", d.PrivateKeyFile)
 	// log.Info("[KT.go] Create funciton d.PrivateKeyFile: ", d.PrivateKeyFile)
+
+	// log.Debug("[KT.go] Create funciton &d.PrivateKeyFile: ", &d.PrivateKeyFile)
+	// log.Info("[KT.go] Create funciton &d.PrivateKeyFile: ", &d.PrivateKeyFile)
 	// time.Sleep(10 * time.Second)
 
 	if d.KeyPairName != "" {
 		fmt.Println("[KT.go]Create funciton d.KeyPairName if ...")
-		log.Debug("[KT.go]Create funciton d.KeyPairName if ...")
+		// log.Debug("[KT.go]Create funciton d.KeyPairName if ...")
 		if err := d.loadSSHKey(); err != nil {
 			return err
 		}
 	} else {
 		d.KeyPairName = fmt.Sprintf("%s-%s", d.MachineName, mcnutils.GenerateRandomID())
 		fmt.Println("Create funciton d.KeyPairName else ...", d.KeyPairName)
-		log.Debug("Create funciton d.KeyPairName else ...", d.KeyPairName)
+		// log.Debug("Create funciton d.KeyPairName else ...", d.KeyPairName)
 		if err := d.createSSHKey(); err != nil {
 			return err
 		}
@@ -421,28 +430,29 @@ func (d *Driver) Create() error {
 	}
 	// fmt.Println("Create token: ", token)
 	hostname := d.GetMachineName()
+	// 실질적 VM 생성
 	id, err := d.custom_createVM(hostname, token)
 	fmt.Println("Create funcion VMid: ", id)
 
 	fmt.Println("Create function End...")
-	log.Debug("Create function End...")
+	// log.Debug("Create function End...")
 	return nil
 }
 
-// // 호스트 성공
+// VM 시작
 func (d *Driver) Start() error {
 	fmt.Println("Start funciton...")
-	log.Debug("Start funciton...")
+	// log.Debug("Start funciton...")
 
 	fmt.Println("Start funciton End...")
-	log.Debug("Start funciton End...")
+	// log.Debug("Start funciton End...")
 	return nil
 }
 
-// 호스트 중지
+// VM 삭제
 func (d *Driver) Stop() error {
 	fmt.Println("Stop funciton...")
-	log.Debug("Stop funciton...")
+	// log.Debug("Stop funciton...")
 	hostname := d.GetMachineName()
 
 	fmt.Println("Get status for KT instance...")
@@ -482,24 +492,24 @@ func (d *Driver) Stop() error {
 	}
 
 	fmt.Println("Stop funciton End...")
-	log.Debug("Stop funciton End...")
+	// log.Debug("Stop funciton End...")
 	return err
 }
 
 // // 호스트 재시작
 func (d *Driver) Restart() error {
 	fmt.Println("Restart funciton...")
-	log.Debug("Restart funciton...")
+	// log.Debug("Restart funciton...")
 
 	fmt.Println("Restart funciton End...")
-	log.Debug("Restart funciton End...")
+	// log.Debug("Restart funciton End...")
 	return nil
 }
 
 // 호스트 강제 종료
 func (d *Driver) Kill() error {
 	fmt.Println("Kill funciton...")
-	log.Debug("Kill funciton...")
+	// log.Debug("Kill funciton...")
 
 	token, err := d.getClient()
 	vmId := d.GetMachineName()
@@ -528,19 +538,17 @@ func (d *Driver) Kill() error {
 	if response.StatusCode < 200 || response.StatusCode > 300 {
 		fmt.Errorf("unable to Stop VM ")
 	}
-	fmt.Println("Remove funciton End...")
-	log.Debug("Remove funciton End...")
 
 	fmt.Println("Kill funciton End...")
-	log.Debug("Kill funciton End...")
+	// log.Debug("Kill funciton End...")
 	return d.Stop()
 
 }
 
-// // 호스트 삭제
+// VM 삭제
 func (d *Driver) Remove() error {
 	fmt.Println("Remove funciton...")
-	log.Debug("Remove funciton...")
+	// log.Debug("Remove funciton...")
 	token, err := d.getClient()
 
 	vmId, err := d.getVMId(d.GetMachineName())
@@ -572,22 +580,23 @@ func (d *Driver) Remove() error {
 		fmt.Errorf("unable to Stop VM ")
 	}
 	fmt.Println("Remove funciton End...")
-	log.Debug("Remove funciton End...")
+	// log.Debug("Remove funciton End...")
 	return nil
 }
 
+// ssh가 필요한 Key파일 읽기, public key는 없고 privatekey만 있다.
 func (d *Driver) loadSSHKey() error {
-	log.Debug("Loading Key Pair", d.KeyPairName)
 	fmt.Println("Loading Key Pair", d.KeyPairName)
+	// log.Debug("Loading Key Pair", d.KeyPairName)
 
 	fmt.Println("loadSSHKey funciton d.PrivateKeyFile", d.PrivateKeyFile)
-	log.Debug("loadSSHKey funciton d.PrivateKeyFile", d.PrivateKeyFile)
+	// log.Debug("loadSSHKey funciton d.PrivateKeyFile", d.PrivateKeyFile)
 
 	fmt.Println("loadSSHKey funciton privateSSHKeyPath...", d.privateSSHKeyPath())
-	log.Debug("loadSSHKey funciton privateSSHKeyPath...", d.privateSSHKeyPath())
+	// log.Debug("loadSSHKey funciton privateSSHKeyPath...", d.privateSSHKeyPath())
 
 	fmt.Println("loadSSHKey funciton publicSSHKeyPath...", d.publicSSHKeyPath())
-	log.Debug("loadSSHKey funciton publicSSHKeyPath...", d.publicSSHKeyPath())
+	// log.Debug("loadSSHKey funciton publicSSHKeyPath...", d.publicSSHKeyPath())
 
 	keyString := d.PrivateKeyFile
 	// 문자열을 ASCII 코드로 변환하여 저장할 슬라이스 생성
@@ -599,17 +608,17 @@ func (d *Driver) loadSSHKey() error {
 	}
 
 	fmt.Println("loadSSHKey funciton asciiBytes...", asciiBytes)
-	log.Debug("loadSSHKey funciton asciiBytes...", asciiBytes)
+	// log.Debug("loadSSHKey funciton asciiBytes...", asciiBytes)
 	fmt.Println(reflect.TypeOf(asciiBytes))
-	log.Debug(reflect.TypeOf(asciiBytes))
+	// log.Debug(reflect.TypeOf(asciiBytes))
 
-	privateKey, err := ioutil.ReadFile(d.privateSSHKeyPath())
+	privateKey, err := ioutil.ReadFile(d.PrivateKeyFile)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("loadSSHKey funciton privateKey...", privateKey)
-	log.Debug("loadSSHKey funciton privateKey...", privateKey)
+	// log.Debug("loadSSHKey funciton privateKey...", privateKey)
 
 	// if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
 	// 	return err
@@ -633,6 +642,7 @@ func (d *Driver) loadSSHKey() error {
 	return nil
 }
 
+// Key파일 경로
 func (d *Driver) privateSSHKeyPath() string {
 	return d.GetSSHKeyPath()
 }
@@ -641,9 +651,10 @@ func (d *Driver) publicSSHKeyPath() string {
 	return d.GetSSHKeyPath() + ".pub"
 }
 
-// // 드라이버를 생성할 준비가 되었는지 확인
+// 클러스터 생성 전 파라미터가 맞게 들어갔는지 확인
+// 없는 부분이 있으면 return err
 func (d *Driver) PreCreateCheck() error {
-	log.Debug("PreCreateCheck function...")
+	// log.Debug("PreCreateCheck function...")
 	fmt.Println("PreCreateCheck function...")
 	if d.ApiEndpoint == "" {
 		return fmt.Errorf("ApiEndpoint is nil")
@@ -671,13 +682,14 @@ func (d *Driver) PreCreateCheck() error {
 	}
 
 	fmt.Println("PreCreateCheck funciton End...")
-	log.Debug("PreCreateCheck funciton End...")
+	// log.Debug("PreCreateCheck funciton End...")
 	return nil
 }
 
+// VM이름을 가지고 vmid를 검색, vmIP를 추출하기 위해 id가 필요하다.
 func (d *Driver) getVMId(hostname string) (string, error) {
 	fmt.Println("getVMId funciton...")
-	log.Debug("getVMId funciton...")
+	// log.Debug("getVMId funciton...")
 	// token, err := d.getClient()
 	url := d.ApiEndpoint + "/d1/server/servers"
 	method := "GET"
@@ -746,14 +758,15 @@ func (d *Driver) getVMId(hostname string) (string, error) {
 	fmt.Println("VM id: ", vmId)
 
 	fmt.Println("getVMId funciton End...")
-	log.Debug("getVMId funciton End...")
+	// log.Debug("getVMId funciton End...")
 
 	return vmId, nil
 }
 
+// VM을 생성
 func (d *Driver) custom_createVM(hostname string, token string) (string, error) {
 	fmt.Println("custom_createVM funciton...")
-	log.Debug("custom_createVM funciton...")
+	// log.Debug("custom_createVM funciton...")
 
 	url := d.ApiEndpoint + `/d1/server/servers`
 	method := "POST"
@@ -812,19 +825,20 @@ func (d *Driver) custom_createVM(hostname string, token string) (string, error) 
 	fmt.Println("Create id: ", id)
 
 	fmt.Println("custom_createVM funciton End...")
-	log.Debug("custom_createVM funciton End...")
+	// log.Debug("custom_createVM funciton End...")
 
 	return id, err
 }
 
+// private key를 사전에 생성, 이 부분이 없으면 vm 생성이 안됨, custom으로 만들어진 부분.
 func (d *Driver) createSSHKey() error {
-	log.Debug("[KT.go]createSSHKey &d.KeyPairName .. map[string]string...: ", &d.KeyPairName, map[string]string{"Name": d.KeyPairName})
+	// log.Debug("[KT.go]createSSHKey &d.KeyPairName .. map[string]string...: ", &d.KeyPairName, map[string]string{"Name": d.KeyPairName})
 	fmt.Println("[KT.go]createSSHKey &d.KeyPairName .. map[string]string...: ", &d.KeyPairName, map[string]string{"Name": d.KeyPairName})
 
-	log.Debug("privatesshkeypath: ", d.privateSSHKeyPath())
+	// log.Debug("privatesshkeypath: ", d.privateSSHKeyPath())
 	fmt.Println("privatesshkeypath: ", d.privateSSHKeyPath())
 
-	log.Debug("publicSSHKeyPath: ", d.publicSSHKeyPath())
+	// log.Debug("publicSSHKeyPath: ", d.publicSSHKeyPath())
 	fmt.Println("publicSSHKeyPath: ", d.publicSSHKeyPath())
 
 	keyString := d.PrivateKeyFile
